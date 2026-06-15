@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ================================================================
+   ZomBeans brand tokens
+   - Site is dark-by-default (deep forest green); cream is the
+     reading color.
+   - Bone (#e5c07b) is the warm CTA / price / bestseller accent.
+   ================================================================ */
+@theme inline {
+  /* Brand */
+  --color-zb-primary: #203222;
+  --color-zb-primary-strong: #1c2d1d;
+  --color-zb-primary-dark: #1e2016;
+  --color-zb-sage: #65845b;
+  --color-zb-cream: #ede0d6;
+  --color-zb-bone: #e5c07b;
+  --color-zb-bone-soft: #f1d59b;
+  --color-zb-danger: #c0392b;
+
+  /* shadcn mapping (used by ui components) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-anton);
+  --font-mono: var(--font-jetbrains-mono);
+
+  /* Radii */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Surfaces: dark forest green */
+  --background: #203222;
+  --foreground: #ede0d6;
+
+  --card: #1c2d1d;
+  --card-foreground: #ede0d6;
+
+  --popover: #1c2d1d;
+  --popover-foreground: #ede0d6;
+
+  /* CTAs / prices / bestseller — warm bone */
+  --primary: #e5c07b;
+  --primary-foreground: #1e2016;
+
+  /* Secondary — sage */
+  --secondary: #65845b;
+  --secondary-foreground: #ede0d6;
+
+  --muted: #1c2d1d;
+  --muted-foreground: rgba(237, 224, 214, 0.72);
+
+  --accent: #65845b;
+  --accent-foreground: #ede0d6;
+
+  --destructive: #c0392b;
+
+  /* Sage at low alpha for hairlines */
+  --border: rgba(101, 132, 91, 0.25);
+  --input: #1c2d1d;
+  --ring: #e5c07b;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  /* Display heading helper class */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+
+  /* Numeric helper for prices, order codes, timers */
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Doodle background — used as an accent overlay, not a full-bleed bg */
+.zb-doodle-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/images/brand/doodle.svg");
+  background-size: 480px 480px;
+  background-repeat: repeat;
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 0;
+}
+.zb-doodle-overlay > * {
+  position: relative;
+  z-index: 1;
+}
