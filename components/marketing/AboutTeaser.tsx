@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Clock, MessageCircle, Phone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { DoodleBg } from "@/components/shared/DoodleBg";
 import { cn } from "@/lib/utils";
@@ -10,18 +11,18 @@ export function AboutTeaser() {
         <div>
           <p className="text-xs font-semibold tracking-[0.2em] text-zb-bone">ABOUT</p>
           <h2 className="font-display mt-2 text-4xl sm:text-5xl text-zb-cream leading-tight">
-            Brew. Brain. Bite.
+            Revive the dead with every sip.
           </h2>
           <p className="mt-4 text-zb-cream/90 leading-relaxed text-lg italic">
             Some cafés wake you up. We bring you back to life.
           </p>
           <p className="mt-4 text-zb-cream/80 leading-relaxed">
-            ZomBeans started in <span className="text-zb-cream font-semibold">2021</span> in San
+            Zombeans started in <span className="text-zb-cream font-semibold">2021</span> in San
             Carlos City, when Mark Hibionada decided the city needed a café that
             took its coffee seriously without taking itself seriously.
           </p>
           <p className="mt-3 text-zb-cream/80 leading-relaxed">
-            What we're really after is the ten minutes you spend with the cup
+            What we&apos;re really after is the ten minutes you spend with the cup
             in your hand: feet up, brain on, the playlist a little louder than
             it needs to be.
           </p>
@@ -55,10 +56,10 @@ export function AboutTeaser() {
             <br />
             6127 Negros Occidental
           </p>
-          <div className="mt-4 space-y-1.5 text-sm text-zb-cream/85">
-            <p>🕒 Open all week · 7 AM – 10 PM</p>
-            <p>📱 <a className="hover:text-zb-cream" href="tel:+639186056360">0918 605 6360</a></p>
-            <p>📘 <a className="hover:text-zb-cream" href="https://facebook.com/ZombeansOfficial" target="_blank" rel="noreferrer">@ZombeansOfficial</a></p>
+          <div className="mt-4 space-y-2 text-sm text-zb-cream/85">
+            <p className="flex items-center gap-2.5"><Clock className="size-4 shrink-0 text-zb-bone" /> Open all week · 7 AM – 10 PM</p>
+            <p className="flex items-center gap-2.5"><Phone className="size-4 shrink-0 text-zb-bone" /> <a className="hover:text-zb-cream" href="tel:+639186056360">0918 605 6360</a></p>
+            <p className="flex items-center gap-2.5"><MessageCircle className="size-4 shrink-0 text-zb-bone" /> <a className="hover:text-zb-cream" href="https://facebook.com/ZombeansOfficial" target="_blank" rel="noreferrer">@ZombeansOfficial</a></p>
           </div>
         </div>
       </section>

@@ -2,10 +2,10 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-zb-primary-dark text-zb-cream/80 mt-20">
+    <footer className="border-t border-border bg-zb-primary-dark text-zb-cream/80">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <p className="font-display text-3xl tracking-wide text-zb-cream">ZOMBEANS</p>
+          <p className="font-display text-3xl tracking-wide text-zb-cream">Zombeans</p>
           <p className="mt-1 text-xs tracking-[0.18em] text-zb-cream/60">RISE UP FROM THE DEAD</p>
           <p className="mt-4 text-sm max-w-md leading-relaxed">
             Premium coffee, matcha, rice bowls and croffles in San Carlos City.
@@ -36,7 +36,7 @@ export function Footer() {
       </div>
       <div className="border-t border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 text-xs text-zb-cream/50 flex flex-col sm:flex-row justify-between gap-2">
-          <p>© {new Date().getFullYear()} ZomBeans Café. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Zombeans Café. All rights reserved.</p>
           <p>Built with love and questionable amounts of caffeine.</p>
         </div>
       </div>

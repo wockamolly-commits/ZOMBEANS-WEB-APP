@@ -1,7 +1,7 @@
-# ZomBeans — Café Ordering Management System
+# Zombeans — Café Ordering Management System
 **Planning & Architecture Document (v1.0)**
 
-> "Rise Up From The Dead." A production-ready ordering platform for ZomBeans Café — built on Next.js 15, Supabase, and Loyverse POS.
+> "Rise Up From The Dead." A production-ready ordering platform for Zombeans Café — built on Next.js 15, Supabase, and Loyverse POS.
 
 This document is the **complete pre-code plan**. No code is generated until you approve this.
 
@@ -9,9 +9,9 @@ This document is the **complete pre-code plan**. No code is generated until you 
 
 ## 0. TL;DR — What We're Building
 
-A premium, mobile-first web app where customers can order **Dine-in / Pickup / Delivery** as guests. Every order lands first in a **ZomBeans Admin Dashboard** where staff *Accept → forward to Loyverse POS → Prepare → Ready → Out for Delivery → Completed*. The café's own rider gets a dedicated mobile-friendly delivery view with Google Maps navigation. Realtime status updates flow back to the customer's order-tracking page.
+A premium, mobile-first web app where customers can order **Dine-in / Pickup / Delivery** as guests. Every order lands first in a **Zombeans Admin Dashboard** where staff *Accept → forward to Loyverse POS → Prepare → Ready → Out for Delivery → Completed*. The café's own rider gets a dedicated mobile-friendly delivery view with Google Maps navigation. Realtime status updates flow back to the customer's order-tracking page.
 
-The website is **not just an ordering form** — it's a brand experience for ZomBeans (the playful zombie-coffee identity), built to the visual quality of Starbucks Reserve or a premium independent café site, not Foodpanda.
+The website is **not just an ordering form** — it's a brand experience for Zombeans (the playful zombie-coffee identity), built to the visual quality of Starbucks Reserve or a premium independent café site, not Foodpanda.
 
 ---
 
@@ -28,11 +28,11 @@ The website is **not just an ordering form** — it's a brand experience for Zom
 | Dimension | Reading |
 |---|---|
 | **Identity** | Playful zombie-coffee café. Cartoon mascot logo, doodle background — leans youthful, but with a premium dark-green palette that keeps it grown-up. |
-| **Wordmark** | "ZOMBEANS" set in a heavy condensed display sans (Bebas Neue / Anton family). Confident, all-caps, billboard energy. |
+| **Wordmark** | "Zombeans" set in a heavy condensed display sans (Bebas Neue / Anton family). Confident billboard energy. |
 | **Tagline** | "RISE UP FROM THE DEAD" — leans into the zombie/coffee-wakes-you-up double meaning. Use sparingly, never compete with H1. |
 | **Color** | Dark forest green dominates; cream (`#ede0d6`) provides relief; sage (`#65845b`) is the only mid-tone. There is **no warm accent yet** — we'll add one (see §1.4). |
 | **Photography** | Drinks on white background, food plated on green ceramic plates — the green plate echoes brand color (lucky alignment, lean into this). |
-| **Voice** | Currently generic ("modern and innovative platform created to provide quality services"). Needs ZomBeans-specific copy with light zombie humor — "Brew. Brain. Bite." not "We are committed to excellence." |
+| **Voice** | Currently generic ("modern and innovative platform created to provide quality services"). Needs Zombeans-specific copy with light zombie humor — "Brew. Brain. Bite." not "We are committed to excellence." |
 
 ### 1.3 UI / UX Audit of the Prototype
 
@@ -871,7 +871,7 @@ Customer accounts, saved addresses, favorites, order history, loyalty/stamps, GC
 ```
 [Sticky header: Logo • Menu • Track Order • 🛒(0) • [Order Now] ]
 [Hero (doodle overlay)
-  ZOMBEANS              ← Anton, 64pt
+  Zombeans              ← Anton, 64pt
   RISE UP FROM THE DEAD ← Inter caps, 12pt, bone color
   [Order Now ▶]  [Browse Menu]
   (small) 📍 Open until 9pm · Pickup ready in ~15 min
@@ -991,10 +991,10 @@ Founding year locked: **2021**.
 
 ### 13.4 About Us copy (approved, typeset verbatim)
 
-> **Brew. Brain. Bite.**
+> **Revive the dead with every sip.**
 > Some cafés wake you up. We bring you back to life.
 >
-> ZomBeans started in **2021** in San Carlos City, when Mark Hibionada decided the city needed a café that took its coffee seriously without taking itself seriously. The name? Half a love letter to the bean, half a wink at every undercaffeinated soul stumbling in before 9 a.m. looking for a pulse.
+> Zombeans started in **2021** in San Carlos City, when Mark Hibionada decided the city needed a café that took its coffee seriously without taking itself seriously. The name? Half a love letter to the bean, half a wink at every undercaffeinated soul stumbling in before 9 a.m. looking for a pulse.
 >
 > What we serve is the easy part — signature drinks built around our house syrups, matcha whisked the slow way, rice bowls and croffles plated on our signature green ceramic, and bestsellers we'll fight you about (the Zomboss, mostly). What we're really after is the ten minutes you spend with the cup in your hand: feet up, brain on, the playlist a little louder than it needs to be.
 >

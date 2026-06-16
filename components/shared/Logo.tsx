@@ -15,7 +15,7 @@ export function Logo({
     <Link
       href={href}
       className={cn("flex items-center gap-2 group", className)}
-      aria-label="ZomBeans — home"
+      aria-label="Zombeans — home"
     >
       <Image
         src="/images/brand/zombeans-logo.png"
@@ -27,7 +27,7 @@ export function Logo({
       />
       <div className="flex flex-col leading-none">
         <span className="font-display text-2xl tracking-wide text-zb-cream">
-          ZOMBEANS
+          Zombeans
         </span>
         {showTagline && (
           <span className="text-[10px] font-semibold tracking-[0.18em] text-zb-cream/70">

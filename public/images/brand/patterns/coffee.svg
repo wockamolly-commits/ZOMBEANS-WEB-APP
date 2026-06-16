@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" fill="none">
+  <g stroke="#65845b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Coffee bean (top-left, rotated) -->
+    <g transform="translate(40 38) rotate(-25)">
+      <ellipse cx="0" cy="0" rx="14" ry="20"/>
+      <path d="M 0 -16 C -4 -8 -4 8 0 16"/>
+    </g>
+    <!-- Coffee cup (top-right) -->
+    <g transform="translate(165 35)">
+      <path d="M -16 0 L 14 0 L 12 26 L -14 26 Z"/>
+      <path d="M 14 4 Q 26 4 26 14 Q 26 24 14 24"/>
+      <line x1="-8" y1="-8" x2="-8" y2="-14"/>
+      <line x1="0" y1="-8" x2="0" y2="-14"/>
+      <line x1="6" y1="-8" x2="6" y2="-14"/>
+    </g>
+    <!-- Small bean (middle-left) -->
+    <g transform="translate(30 120) rotate(35)">
+      <ellipse cx="0" cy="0" rx="9" ry="13"/>
+      <path d="M 0 -10 C -3 -5 -3 5 0 10"/>
+    </g>
+    <!-- Steam swirl (center) -->
+    <g transform="translate(115 115)">
+      <path d="M -10 10 q 8 -10 0 -20 t 0 -20"/>
+      <path d="M 10 10 q -8 -10 0 -20 t 0 -20"/>
+    </g>
+    <!-- Bean (middle-right) -->
+    <g transform="translate(205 130) rotate(-15)">
+      <ellipse cx="0" cy="0" rx="12" ry="17"/>
+      <path d="M 0 -13 C -3 -6 -3 6 0 13"/>
+    </g>
+    <!-- Espresso dots (mid) -->
+    <circle cx="80" cy="95" r="2.5" fill="#65845b" stroke="none"/>
+    <circle cx="160" cy="90" r="2.5" fill="#65845b" stroke="none"/>
+    <!-- Large bean (bottom-left) -->
+    <g transform="translate(55 200) rotate(15)">
+      <ellipse cx="0" cy="0" rx="16" ry="22"/>
+      <path d="M 0 -18 C -4 -9 -4 9 0 18"/>
+    </g>
+    <!-- Coffee cup small (bottom-center) -->
+    <g transform="translate(135 205)">
+      <path d="M -10 0 L 9 0 L 8 16 L -9 16 Z"/>
+      <path d="M 9 3 Q 16 3 16 9 Q 16 15 9 15"/>
+    </g>
+    <!-- Bean (bottom-right) -->
+    <g transform="translate(205 210) rotate(40)">
+      <ellipse cx="0" cy="0" rx="10" ry="14"/>
+      <path d="M 0 -11 C -3 -5 -3 5 0 11"/>
+    </g>
+  </g>
+</svg>

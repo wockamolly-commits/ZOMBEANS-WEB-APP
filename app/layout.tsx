@@ -24,13 +24,13 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://zombeans.local"),
   title: {
-    default: "ZomBeans — Rise Up From The Dead",
-    template: "%s · ZomBeans",
+    default: "Zombeans — Rise Up From The Dead",
+    template: "%s · Zombeans",
   },
   description:
     "Premium coffee, matcha, rice bowls and croffles in San Carlos City. Order dine-in, pickup, or delivery.",
   openGraph: {
-    title: "ZomBeans — Rise Up From The Dead",
+    title: "Zombeans — Rise Up From The Dead",
     description:
       "Premium coffee, matcha, rice bowls and croffles in San Carlos City.",
     type: "website",

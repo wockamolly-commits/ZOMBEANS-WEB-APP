@@ -15,9 +15,9 @@ export function Hero() {
             OPEN NOW · 7 AM – 10 PM
           </div>
           <h1 className="font-display mt-4 text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-zb-cream">
-            BREW. BRAIN.
+            REVIVE THE DEAD
             <br />
-            <span className="text-zb-bone">BITE.</span>
+            WITH EVERY <span className="text-zb-bone">SIP.</span>
           </h1>
           <p className="mt-5 max-w-xl text-base sm:text-lg text-zb-cream/85 leading-relaxed">
             Some cafés wake you up. We bring you back to life. Premium coffee,

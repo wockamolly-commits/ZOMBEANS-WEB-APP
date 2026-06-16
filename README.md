@@ -1,6 +1,6 @@
-# ZomBeans Web
+# Zombeans Web
 
-> Rise Up From The Dead. The ZomBeans Café ordering platform.
+> Rise Up From The Dead. The Zombeans Café ordering platform.
 
 Production-ready ordering for **dine-in, pickup, and delivery** in San Carlos City. Built with Next.js + Supabase + Tailwind v4 + shadcn/ui.
 

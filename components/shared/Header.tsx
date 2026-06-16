@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { buttonVariants } from "@/components/ui/button";
-import { ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CartLink } from "@/components/shop/CartLink";
 
 export function Header() {
   return (
@@ -22,13 +22,7 @@ export function Header() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link
-              href="/cart"
-              aria-label="Cart"
-              className="relative inline-flex size-10 items-center justify-center rounded-full text-zb-cream hover:bg-zb-primary-strong transition"
-            >
-              <ShoppingBag className="size-5" />
-            </Link>
+            <CartLink />
             <Link
               href="/menu"
               className={cn(
