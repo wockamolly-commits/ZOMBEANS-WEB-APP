@@ -20,9 +20,6 @@ export function Header() {
             <Link href="/contact" className="px-3 py-2 rounded-md hover:text-zb-cream hover:bg-zb-primary-strong transition">
               Contact
             </Link>
-            <Link href="/order" className="px-3 py-2 rounded-md hover:text-zb-cream hover:bg-zb-primary-strong transition">
-              Track Order
-            </Link>
           </nav>
           <div className="flex items-center gap-2">
             <Link

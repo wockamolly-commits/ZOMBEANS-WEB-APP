@@ -22,7 +22,7 @@ export function BestsellerStrip() {
         {bestsellers.map((item) => (
           <Link
             key={item.slug}
-            href={`/menu/${item.slug}`}
+            href={`/menu/best-sellers/${item.slug}`}
             className="group rounded-2xl border border-border bg-card overflow-hidden transition hover:border-zb-bone/60"
           >
             <div className="aspect-square bg-zb-cream relative">
