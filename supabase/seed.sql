@@ -1,4 +1,4 @@
--- ZomBeans menu seed — sourced from menu pages 1–4.
+-- Zombeans menu seed — sourced from menu pages 1–4.
 -- Prices in centavos (PHP × 100).
 
 -- 1. Categories ----------------------------------------------------------
@@ -19,100 +19,100 @@ insert into menu_categories (slug, name, sort_order) values
 -- 2. Items --------------------------------------------------------------
 -- Signature drinks
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='signature-drinks'), 'zomboss-drink',        'Zomboss Drink',         'House signature. Espresso, milk, and the secret syrup we don''t talk about.', '/images/drinks/zomboss-latte.png',       true,  10),
-  ((select id from menu_categories where slug='signature-drinks'), 'spanish-latte',        'Spanish Latte',         'Espresso pulled long, condensed milk for that classic Spanish sweetness.',   '/images/drinks/spanish-latte.png',       true,  20),
-  ((select id from menu_categories where slug='signature-drinks'), 'salted-caramel-latte', 'Salted Caramel Latte',  'Caramel, espresso, sea salt finish.',                                        '/images/drinks/salted-caramel-latte.png',true,  30),
-  ((select id from menu_categories where slug='signature-drinks'), 'salted-latte',         'Salted Latte',          'Espresso and milk with a pinch of salt — clean, balanced, addictive.',       '/images/drinks/salted-latte.png',        false, 40),
-  ((select id from menu_categories where slug='signature-drinks'), 'biscoff-latte',        'Biscoff Latte',         'Iced latte layered with Biscoff cream and a real Biscoff cookie.',           '/images/drinks/biscoff-latte.png',       true,  50);
+  ((select id from menu_categories where slug='signature-drinks'), 'zomboss-drink',        'Zomboss Drink',         'House signature. Espresso, milk, and the secret syrup we don''t talk about.', '/images/menu/drinks/zomboss-latte.png',       true,  10),
+  ((select id from menu_categories where slug='signature-drinks'), 'spanish-latte',        'Spanish Latte',         'Espresso pulled long, condensed milk for that classic Spanish sweetness.',   '/images/menu/drinks/spanish-latte.png',       true,  20),
+  ((select id from menu_categories where slug='signature-drinks'), 'salted-caramel-latte', 'Salted Caramel Latte',  'Caramel, espresso, sea salt finish.',                                        '/images/menu/drinks/salted-caramel-latte.png',true,  30),
+  ((select id from menu_categories where slug='signature-drinks'), 'salted-latte',         'Salted Latte',          'Espresso and milk with a pinch of salt — clean, balanced, addictive.',       '/images/menu/drinks/salted-latte.png',        false, 40),
+  ((select id from menu_categories where slug='signature-drinks'), 'biscoff-latte',        'Biscoff Latte',         'Iced latte layered with Biscoff cream and a real Biscoff cookie.',           '/images/menu/drinks/biscoff-latte.png',       true,  50);
 
 -- Coffee
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='coffee'), 'americano',             'Americano',             'Two shots, hot or over ice. The honest one.',          '/images/drinks/iced-americano.png',       false, 10),
-  ((select id from menu_categories where slug='coffee'), 'caramel-latte',         'Caramel Latte',         'Latte sweetened with house caramel.',                  '/images/drinks/caramel-latte.png',        false, 20),
-  ((select id from menu_categories where slug='coffee'), 'hazelnut-latte',        'Hazelnut Latte',        'Nutty, smooth, all-day drinkable.',                    '/images/drinks/hazelnut-latte.png',       false, 30),
-  ((select id from menu_categories where slug='coffee'), 'salted-hazelnut-latte', 'Salted Hazelnut Latte', 'Hazelnut with that signature salt finish.',            '/images/drinks/salted-hazelnut-latte.png',false, 40),
-  ((select id from menu_categories where slug='coffee'), 'mocha-latte',           'Mocha Latte',           'Espresso, milk, dark chocolate.',                      '/images/drinks/mocha-latte.png',          false, 50);
+  ((select id from menu_categories where slug='coffee'), 'americano',             'Americano',             'Two shots, hot or over ice. The honest one.',          '/images/menu/drinks/iced-americano.png',       false, 10),
+  ((select id from menu_categories where slug='coffee'), 'caramel-latte',         'Caramel Latte',         'Latte sweetened with house caramel.',                  '/images/menu/drinks/caramel-latte.png',        false, 20),
+  ((select id from menu_categories where slug='coffee'), 'hazelnut-latte',        'Hazelnut Latte',        'Nutty, smooth, all-day drinkable.',                    '/images/menu/drinks/hazelnut-latte.png',       false, 30),
+  ((select id from menu_categories where slug='coffee'), 'salted-hazelnut-latte', 'Salted Hazelnut Latte', 'Hazelnut with that signature salt finish.',            '/images/menu/drinks/salted-hazelnut-latte.png',false, 40),
+  ((select id from menu_categories where slug='coffee'), 'mocha-latte',           'Mocha Latte',           'Espresso, milk, dark chocolate.',                      '/images/menu/drinks/mocha-latte.png',          false, 50);
 
 -- Matcha
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='matcha'), 'matcha-latte',       'Matcha Latte',        'Ceremonial-grade matcha, whisked the slow way.',  '/images/drinks/matcha-latte.png',       true,  10),
-  ((select id from menu_categories where slug='matcha'), 'clean-matcha',       'Clean Matcha',        'Matcha and water — no sweetener, no dairy.',      '/images/drinks/clean-matcha.png',       false, 20),
-  ((select id from menu_categories where slug='matcha'), 'white-mocha-matcha', 'White Mocha Matcha',  'Matcha latte layered with white chocolate.',       '/images/drinks/white-mocha-matcha.png', false, 30),
-  ((select id from menu_categories where slug='matcha'), 'chabako-matcha',     'Chabako Matcha',      'Premium reserve matcha for matcha purists.',       '/images/drinks/chabako-matcha.png',     false, 40),
-  ((select id from menu_categories where slug='matcha'), 'creamcheese-latte',  'Creamcheese Latte',   'Espresso latte topped with whipped creamcheese.',  '/images/drinks/creamcheese-latte.png',  false, 50);
+  ((select id from menu_categories where slug='matcha'), 'matcha-latte',       'Matcha Latte',        'Ceremonial-grade matcha, whisked the slow way.',  '/images/menu/drinks/matcha-latte.png',       true,  10),
+  ((select id from menu_categories where slug='matcha'), 'clean-matcha',       'Clean Matcha',        'Matcha and water — no sweetener, no dairy.',      '/images/menu/drinks/clean-matcha.png',       false, 20),
+  ((select id from menu_categories where slug='matcha'), 'white-mocha-matcha', 'White Mocha Matcha',  'Matcha latte layered with white chocolate.',       '/images/menu/drinks/white-mocha-matcha.png', false, 30),
+  ((select id from menu_categories where slug='matcha'), 'chabako-matcha',     'Chabako Matcha',      'Premium reserve matcha for matcha purists.',       '/images/menu/drinks/chabako-matcha.png',     false, 40),
+  ((select id from menu_categories where slug='matcha'), 'creamcheese-latte',  'Creamcheese Latte',   'Espresso latte topped with whipped creamcheese.',  '/images/menu/drinks/creamcheese-latte.png',  false, 50);
 
 -- Milk series
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='milk-series'), 'strawberry-milk', 'Strawberry Milk', 'Fresh strawberry, milk, ice.',                 '/images/drinks/strawberry-milk.png', false, 10),
-  ((select id from menu_categories where slug='milk-series'), 'blueberry-milk',  'Blueberry Milk',  'Blueberry compote layered with cold milk.',    '/images/drinks/blueberry-milk.png',  false, 20),
-  ((select id from menu_categories where slug='milk-series'), 'ube-milk',        'Ube Milk',        'Purple ube, milk, ice. Pinoy comfort drink.',  '/images/drinks/ube-milk.png',        true,  30),
-  ((select id from menu_categories where slug='milk-series'), 'mango-milk',      'Mango Milk',      'Mango puree and cold milk.',                    '/images/drinks/mango-milk.png',      false, 40),
-  ((select id from menu_categories where slug='milk-series'), 'milo-overload',   'Milo Overload',   'Cold milk, double Milo, more Milo on top.',     '/images/drinks/milo-overload.png',   false, 50),
-  ((select id from menu_categories where slug='milk-series'), 'choco-hq-blend',  'Choco HQ Blend',  'Rich chocolate blend, hot or cold.',            '/images/drinks/choco-hq.png',        false, 60);
+  ((select id from menu_categories where slug='milk-series'), 'strawberry-milk', 'Strawberry Milk', 'Fresh strawberry, milk, ice.',                 '/images/menu/drinks/strawberry-milk.png', false, 10),
+  ((select id from menu_categories where slug='milk-series'), 'blueberry-milk',  'Blueberry Milk',  'Blueberry compote layered with cold milk.',    '/images/menu/drinks/blueberry-milk.png',  false, 20),
+  ((select id from menu_categories where slug='milk-series'), 'ube-milk',        'Ube Milk',        'Purple ube, milk, ice. Pinoy comfort drink.',  '/images/menu/drinks/ube-milk.png',        true,  30),
+  ((select id from menu_categories where slug='milk-series'), 'mango-milk',      'Mango Milk',      'Mango puree and cold milk.',                    '/images/menu/drinks/mango-milk.png',      false, 40),
+  ((select id from menu_categories where slug='milk-series'), 'milo-overload',   'Milo Overload',   'Cold milk, double Milo, more Milo on top.',     '/images/menu/drinks/milo-overload.png',   false, 50),
+  ((select id from menu_categories where slug='milk-series'), 'choco-hq-blend',  'Choco HQ Blend',  'Rich chocolate blend, hot or cold.',            '/images/menu/drinks/choco-hq.png',        false, 60);
 
 -- Creamcheese series
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='creamcheese-series'), 'strawberry-creamcheese', 'Strawberry Creamcheese', 'Strawberry milk topped with whipped creamcheese.', '/images/drinks/strawberry-creamcheese.png', false, 10),
-  ((select id from menu_categories where slug='creamcheese-series'), 'blueberry-creamcheese',  'Blueberry Creamcheese',  'Blueberry milk topped with whipped creamcheese.',  '/images/drinks/blueberry-creamcheese.png',  false, 20),
-  ((select id from menu_categories where slug='creamcheese-series'), 'milo-creamcheese',       'Milo Creamcheese',       'Milo Overload with a thick creamcheese cap.',      '/images/drinks/milo-creamcheese.png',       false, 30);
+  ((select id from menu_categories where slug='creamcheese-series'), 'strawberry-creamcheese', 'Strawberry Creamcheese', 'Strawberry milk topped with whipped creamcheese.', '/images/menu/drinks/strawberry-creamcheese.png', false, 10),
+  ((select id from menu_categories where slug='creamcheese-series'), 'blueberry-creamcheese',  'Blueberry Creamcheese',  'Blueberry milk topped with whipped creamcheese.',  '/images/menu/drinks/blueberry-creamcheese.png',  false, 20),
+  ((select id from menu_categories where slug='creamcheese-series'), 'milo-creamcheese',       'Milo Creamcheese',       'Milo Overload with a thick creamcheese cap.',      '/images/menu/drinks/milo-creamcheese.png',       false, 30);
 
 -- Sparkling
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='sparkling'), 'sparkling-strawberry', 'Sparkling Strawberry', 'Strawberry over sparkling water. Light and crisp.', '/images/drinks/sparkling-strawberry.png', false, 10),
-  ((select id from menu_categories where slug='sparkling'), 'sparkling-blueberry',  'Sparkling Blueberry',  'Blueberry over sparkling water.',                    '/images/drinks/sparkling-blueberry.png',  false, 20);
+  ((select id from menu_categories where slug='sparkling'), 'sparkling-strawberry', 'Sparkling Strawberry', 'Strawberry over sparkling water. Light and crisp.', '/images/menu/drinks/sparkling-strawberry.png', false, 10),
+  ((select id from menu_categories where slug='sparkling'), 'sparkling-blueberry',  'Sparkling Blueberry',  'Blueberry over sparkling water.',                    '/images/menu/drinks/sparkling-blueberry.png',  false, 20);
 
 -- Tea
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='tea'), 'honey-lemon-tea',             'Honey Lemon Tea',              'Honey, lemon, hot or iced.',                     '/images/drinks/honey-lemon-tea.png',          true,  10),
-  ((select id from menu_categories where slug='tea'), 'honey-lemon-pomegranate-tea', 'Honey Lemon Pomegranate Tea',  'Honey, lemon, pomegranate.',                     '/images/drinks/honey-lemon-pomegranate.png',  true,  20),
-  ((select id from menu_categories where slug='tea'), 'honey-lemon-ginger-tea',      'Honey Lemon Ginger Tea',       'Honey, lemon, ginger — for when you need a reset.', '/images/drinks/honey-lemon-ginger.png',       false, 30),
-  ((select id from menu_categories where slug='tea'), 'peach-oolong-tea',            'Peach Oolong Tea',             'Oolong steeped with fresh peach.',               '/images/drinks/peach-oolong-tea.png',         false, 40);
+  ((select id from menu_categories where slug='tea'), 'honey-lemon-tea',             'Honey Lemon Tea',              'Honey, lemon, hot or iced.',                     '/images/menu/drinks/honey-lemon-tea.png',          true,  10),
+  ((select id from menu_categories where slug='tea'), 'honey-lemon-pomegranate-tea', 'Honey Lemon Pomegranate Tea',  'Honey, lemon, pomegranate.',                     '/images/menu/drinks/honey-lemon-pomegranate.png',  true,  20),
+  ((select id from menu_categories where slug='tea'), 'honey-lemon-ginger-tea',      'Honey Lemon Ginger Tea',       'Honey, lemon, ginger — for when you need a reset.', '/images/menu/drinks/honey-lemon-ginger.png',       false, 30),
+  ((select id from menu_categories where slug='tea'), 'peach-oolong-tea',            'Peach Oolong Tea',             'Oolong steeped with fresh peach.',               '/images/menu/drinks/peach-oolong-tea.png',         false, 40);
 
 -- Rice bowls
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='rice-bowls'), 'bacon-bowl',                   'Bacon Bowl',                   'Bacon, egg, garlic rice, lettuce.',                    '/images/food/bacon-bowl.png',        true,  10),
-  ((select id from menu_categories where slug='rice-bowls'), 'hungarian-bowl',               'Hungarian Bowl',               'Hungarian sausage, egg, garlic rice, lettuce.',        '/images/food/hungarian-bowl.png',    true,  20),
-  ((select id from menu_categories where slug='rice-bowls'), 'tocino-bowl',                  'Tocino Bowl',                  'Chicken tocino, egg, garlic rice, lettuce.',           '/images/food/tocino-bowl.png',       true,  30),
-  ((select id from menu_categories where slug='rice-bowls'), 'tapa-bowl',                    'Tapa Bowl',                    'Beef tapa, egg, garlic rice, lettuce.',                '/images/food/tapa-bowl.png',         false, 40),
-  ((select id from menu_categories where slug='rice-bowls'), 'corned-beef-bowl',             'Corned Beef Bowl',             'Corned beef, egg, garlic rice, lettuce.',              '/images/food/corned-beef-bowl.png',  false, 50),
-  ((select id from menu_categories where slug='rice-bowls'), 'longganisa-bowl',              'Longganisa Bowl',              'Longganisa, egg, garlic rice, lettuce.',               '/images/food/longganisa-bowl.png',   false, 60),
-  ((select id from menu_categories where slug='rice-bowls'), 'chick-n-rice',                 'Chick''n Rice',                'Crispy chicken fillet, garlic rice, egg.',             '/images/food/chick-n-rice.png',      false, 70),
-  ((select id from menu_categories where slug='rice-bowls'), 'burger-steak',                 'Burger Steak',                 'Beef burger steak, rice, egg, mushroom gravy.',        '/images/food/burger-steak.png',      true,  80),
-  ((select id from menu_categories where slug='rice-bowls'), 'pork-belly-mushroom-gravy',    'Pork Belly with Mushroom Gravy','Breaded pork belly, rice, mushroom gravy.',            '/images/food/breaded-pork-belly.png',false, 90);
+  ((select id from menu_categories where slug='rice-bowls'), 'bacon-bowl',                   'Bacon Bowl',                   'Bacon, egg, garlic rice, lettuce.',                    '/images/menu/food/bacon-bowl.png',        true,  10),
+  ((select id from menu_categories where slug='rice-bowls'), 'hungarian-bowl',               'Hungarian Bowl',               'Hungarian sausage, egg, garlic rice, lettuce.',        '/images/menu/food/hungarian-bowl.png',    true,  20),
+  ((select id from menu_categories where slug='rice-bowls'), 'tocino-bowl',                  'Tocino Bowl',                  'Chicken tocino, egg, garlic rice, lettuce.',           '/images/menu/food/tocino-bowl.png',       true,  30),
+  ((select id from menu_categories where slug='rice-bowls'), 'tapa-bowl',                    'Tapa Bowl',                    'Beef tapa, egg, garlic rice, lettuce.',                '/images/menu/food/tapa-bowl.png',         false, 40),
+  ((select id from menu_categories where slug='rice-bowls'), 'corned-beef-bowl',             'Corned Beef Bowl',             'Corned beef, egg, garlic rice, lettuce.',              '/images/menu/food/corned-beef-bowl.png',  false, 50),
+  ((select id from menu_categories where slug='rice-bowls'), 'longganisa-bowl',              'Longganisa Bowl',              'Longganisa, egg, garlic rice, lettuce.',               '/images/menu/food/longganisa-bowl.png',   false, 60),
+  ((select id from menu_categories where slug='rice-bowls'), 'chick-n-rice',                 'Chick''n Rice',                'Crispy chicken fillet, garlic rice, egg.',             '/images/menu/food/chick-n-rice.png',      false, 70),
+  ((select id from menu_categories where slug='rice-bowls'), 'burger-steak',                 'Burger Steak',                 'Beef burger steak, rice, egg, mushroom gravy.',        '/images/menu/food/burger-steak.png',      true,  80),
+  ((select id from menu_categories where slug='rice-bowls'), 'pork-belly-mushroom-gravy',    'Pork Belly with Mushroom Gravy','Breaded pork belly, rice, mushroom gravy.',            '/images/menu/food/breaded-pork-belly.png',false, 90);
 
 -- Toasts
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='toasts'), 'bacon-toast',  'Bacon Toast',  'Bacon, egg, wheat bread, lettuce, cheese, side dish.', '/images/food/bacon-toast.png',  true,  10),
-  ((select id from menu_categories where slug='toasts'), 'salami-toast', 'Salami Toast', 'Salami, egg, wheat bread, lettuce, cheese, side dish.','/images/food/salami-toast.png', false, 20);
+  ((select id from menu_categories where slug='toasts'), 'bacon-toast',  'Bacon Toast',  'Bacon, egg, wheat bread, lettuce, cheese, side dish.', '/images/menu/food/bacon-toast.png',  true,  10),
+  ((select id from menu_categories where slug='toasts'), 'salami-toast', 'Salami Toast', 'Salami, egg, wheat bread, lettuce, cheese, side dish.','/images/menu/food/salami-toast.png', false, 20);
 
 -- Croffles
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='croffles'), 'plain-croffles',                 'Plain Croffles',                 'Plain croffle, butter, syrup on the side.',           '/images/food/plain-croffles.png',                 false, 10),
-  ((select id from menu_categories where slug='croffles'), 'biscoff-croffles',               'Biscoff Croffles',               'Croffle topped with Biscoff spread and crumbs.',      '/images/food/biscoff-croffles.png',               false, 20),
-  ((select id from menu_categories where slug='croffles'), 'choco-almond-croffles',          'Choco Almond Croffles',          'Croffle with chocolate sauce and toasted almonds.',   '/images/food/choco-almond-croffles.png',          true,  30),
-  ((select id from menu_categories where slug='croffles'), 'strawberry-creamcheese-croffles','Strawberry Creamcheese Croffles','Croffle topped with strawberry and creamcheese.',     '/images/food/strawberry-creamcheese-croffles.png',false, 40),
-  ((select id from menu_categories where slug='croffles'), 'blueberry-creamcheese-croffles', 'Blueberry Creamcheese Croffles', 'Croffle topped with blueberry and creamcheese.',      '/images/food/blueberry-creamcheese-croffles.png', false, 50),
-  ((select id from menu_categories where slug='croffles'), 'milo-overload-croffles',         'Milo Overload Croffles',         'Croffle drowned in chocolate sauce and Milo powder.', '/images/food/milo-overload-croffles.png',         false, 60);
+  ((select id from menu_categories where slug='croffles'), 'plain-croffles',                 'Plain Croffles',                 'Plain croffle, butter, syrup on the side.',           '/images/menu/food/plain-croffles.png',                 false, 10),
+  ((select id from menu_categories where slug='croffles'), 'biscoff-croffles',               'Biscoff Croffles',               'Croffle topped with Biscoff spread and crumbs.',      '/images/menu/food/biscoff-croffles.png',               false, 20),
+  ((select id from menu_categories where slug='croffles'), 'choco-almond-croffles',          'Choco Almond Croffles',          'Croffle with chocolate sauce and toasted almonds.',   '/images/menu/food/choco-almond-croffles.png',          true,  30),
+  ((select id from menu_categories where slug='croffles'), 'strawberry-creamcheese-croffles','Strawberry Creamcheese Croffles','Croffle topped with strawberry and creamcheese.',     '/images/menu/food/strawberry-creamcheese-croffles.png',false, 40),
+  ((select id from menu_categories where slug='croffles'), 'blueberry-creamcheese-croffles', 'Blueberry Creamcheese Croffles', 'Croffle topped with blueberry and creamcheese.',      '/images/menu/food/blueberry-creamcheese-croffles.png', false, 50),
+  ((select id from menu_categories where slug='croffles'), 'milo-overload-croffles',         'Milo Overload Croffles',         'Croffle drowned in chocolate sauce and Milo powder.', '/images/menu/food/milo-overload-croffles.png',         false, 60);
 
 -- Chicken & Sandwiches
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='chicken'), 'chick-n-fries',                    'Chick''n Fries',                  'Chicken fillet, crispy fries, choose a sauce.', '/images/food/chick-n-fries.png',                  true,  10),
-  ((select id from menu_categories where slug='chicken'), 'chick-n-buns',                     'Chick''n Buns',                   'Buns, chicken fillet, veggies, sauce.',          '/images/food/chick-n-buns.png',                   true,  20),
-  ((select id from menu_categories where slug='chicken'), 'chicken-ham-overload-sandwich',    'Chicken & Ham Overload Sandwich', 'Wheat bread, chicken fillet, ham, cheese, veggies.', '/images/food/chicken-and-ham-overload-sandwich.png', true,  30),
-  ((select id from menu_categories where slug='chicken'), 'taco-burger',                      'Taco Burger',                     'Beef-packed tortilla, veggies, sauces, dip.',     '/images/food/taco-burger.png',                   true,  40),
-  ((select id from menu_categories where slug='chicken'), 'chicken-salad',                    'Chicken Salad',                   'Chicken fillet, veggies, sauces.',                '/images/food/chick-n-salad.png',                 false, 50);
+  ((select id from menu_categories where slug='chicken'), 'chick-n-fries',                    'Chick''n Fries',                  'Chicken fillet, crispy fries, choose a sauce.', '/images/menu/food/chick-n-fries.png',                  true,  10),
+  ((select id from menu_categories where slug='chicken'), 'chick-n-buns',                     'Chick''n Buns',                   'Buns, chicken fillet, veggies, sauce.',          '/images/menu/food/chick-n-buns.png',                   true,  20),
+  ((select id from menu_categories where slug='chicken'), 'chicken-ham-overload-sandwich',    'Chicken & Ham Overload Sandwich', 'Wheat bread, chicken fillet, ham, cheese, veggies.', '/images/menu/food/chicken-and-ham-overload-sandwich.png', true,  30),
+  ((select id from menu_categories where slug='chicken'), 'taco-burger',                      'Taco Burger',                     'Beef-packed tortilla, veggies, sauces, dip.',     '/images/menu/food/taco-burger.png',                   true,  40),
+  ((select id from menu_categories where slug='chicken'), 'chicken-salad',                    'Chicken Salad',                   'Chicken fillet, veggies, sauces.',                '/images/menu/food/chick-n-salad.png',                 false, 50);
 
 -- Sides
 insert into menu_items (category_id, slug, name, description, image_url, is_bestseller, sort_order) values
-  ((select id from menu_categories where slug='sides'), 'chick-n-chips',         'Chick''n Chips',         'Crispy chicken bites with chips.',                 '/images/food/chick-n-chips.png',          true,  10),
-  ((select id from menu_categories where slug='sides'), 'nori-bites',            'Nori Bites',             'Crispy nori-seasoned bites.',                       '/images/food/nori-bites.png',             false, 20),
-  ((select id from menu_categories where slug='sides'), 'wings-n-rice',          'Wings & Rice',           'Wings + garlic rice.',                              '/images/food/wings-n-rice.png',           false, 30),
-  ((select id from menu_categories where slug='sides'), 'wings-n-wedges',        'Wings & Wedges',         'Wings + potato wedges.',                            '/images/food/wings-n-wedges.png',         false, 40),
-  ((select id from menu_categories where slug='sides'), 'shawarma-fries',        'Shawarma Fries',         'Fries topped with shawarma seasoning and sauce.',   '/images/food/shawarma-fries.png',         false, 50),
-  ((select id from menu_categories where slug='sides'), 'fries-wedges-with-dip', 'Fries & Wedges with Dip','Fries, wedges, choice of dip.',                     '/images/food/fries-n-wedges.png',         false, 60),
-  ((select id from menu_categories where slug='sides'), 'flavored-fries',        'Flavored Fries',         'Fries with your choice of seasoning.',              '/images/food/flavored-fries.png',         false, 70),
-  ((select id from menu_categories where slug='sides'), 'quesadilla',            'Quesadilla',             'Cheese-stuffed quesadilla, your choice of filling.','/images/food/quesadilla.png',             false, 80),
-  ((select id from menu_categories where slug='sides'), 'nachos-overload',       'Nachos Overload',        'Cheesy nachos loaded with your choice of meat.',    '/images/food/cheesy-nachos-overload.png', false, 90);
+  ((select id from menu_categories where slug='sides'), 'chick-n-chips',         'Chick''n Chips',         'Crispy chicken bites with chips.',                 '/images/menu/food/chick-n-chips.png',          true,  10),
+  ((select id from menu_categories where slug='sides'), 'nori-bites',            'Nori Bites',             'Crispy nori-seasoned bites.',                       '/images/menu/food/nori-bites.png',             false, 20),
+  ((select id from menu_categories where slug='sides'), 'wings-n-rice',          'Wings & Rice',           'Wings + garlic rice.',                              '/images/menu/food/wings-n-rice.png',           false, 30),
+  ((select id from menu_categories where slug='sides'), 'wings-n-wedges',        'Wings & Wedges',         'Wings + potato wedges.',                            '/images/menu/food/wings-n-wedges.png',         false, 40),
+  ((select id from menu_categories where slug='sides'), 'shawarma-fries',        'Shawarma Fries',         'Fries topped with shawarma seasoning and sauce.',   '/images/menu/food/shawarma-fries.png',         false, 50),
+  ((select id from menu_categories where slug='sides'), 'fries-wedges-with-dip', 'Fries & Wedges with Dip','Fries, wedges, choice of dip.',                     '/images/menu/food/fries-n-wedges.png',         false, 60),
+  ((select id from menu_categories where slug='sides'), 'flavored-fries',        'Flavored Fries',         'Fries with your choice of seasoning.',              '/images/menu/food/flavored-fries.png',         false, 70),
+  ((select id from menu_categories where slug='sides'), 'quesadilla',            'Quesadilla',             'Cheese-stuffed quesadilla, your choice of filling.','/images/menu/food/quesadilla.png',             false, 80),
+  ((select id from menu_categories where slug='sides'), 'nachos-overload',       'Nachos Overload',        'Cheesy nachos loaded with your choice of meat.',    '/images/menu/food/cheesy-nachos-overload.png', false, 90);
 
 -- 3. Variations ----------------------------------------------------------
 -- Signature drinks

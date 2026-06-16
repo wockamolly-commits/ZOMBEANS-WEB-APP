@@ -1,4 +1,4 @@
--- ZomBeans — enum types and shared bits
+-- Zombeans — enum types and shared bits
 create extension if not exists pgcrypto;
 
 create type service_mode as enum ('dine_in','pickup','delivery');
