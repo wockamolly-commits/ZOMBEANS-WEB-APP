@@ -27,7 +27,7 @@ export function Logo({
       />
       <div className="flex flex-col leading-none">
         <span className="font-display text-2xl tracking-wide text-zb-cream">
-          Zombeans
+          ZOMBEANS
         </span>
         {showTagline && (
           <span className="text-[10px] font-semibold tracking-[0.18em] text-zb-cream/70">

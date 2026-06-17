@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-border bg-zb-primary-dark text-zb-cream/80">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 grid gap-10 md:grid-cols-4">
         <div className="md:col-span-2">
-          <p className="font-display text-3xl tracking-wide text-zb-cream">Zombeans</p>
+          <p className="font-display text-3xl tracking-wide text-zb-cream">ZOMBEANS</p>
           <p className="mt-1 text-xs tracking-[0.18em] text-zb-cream/60">RISE UP FROM THE DEAD</p>
           <p className="mt-4 text-sm max-w-md leading-relaxed">
             Premium coffee, matcha, rice bowls and croffles in San Carlos City.
