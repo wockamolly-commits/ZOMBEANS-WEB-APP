@@ -41,7 +41,7 @@ security definer set search_path = public
 as $$
 begin
   insert into customer_profiles (id, display_name)
-  values (new.id, nullif(new.raw_user_meta_data->>'display_name',''))
+  values (new.id, nullif(coalesce(new.raw_user_meta_data, '{}'::jsonb)->>'display_name',''))
   on conflict (id) do nothing;
   return new;
 end;
