@@ -1,0 +1,46 @@
+"use server";
+
+import { headers } from "next/headers";
+import * as z from "zod";
+import { createClient } from "@/lib/supabase/server";
+
+export type LoginState = {
+  status: "idle" | "sent" | "error";
+  message?: string;
+  email?: string;
+};
+
+const schema = z.object({
+  email: z.email({ error: "Enter a valid email address." }).trim(),
+  next: z.string().optional(),
+});
+
+export async function requestMagicLink(
+  _prev: LoginState,
+  formData: FormData
+): Promise<LoginState> {
+  const parsed = schema.safeParse({
+    email: formData.get("email"),
+    next: formData.get("next"),
+  });
+  if (!parsed.success) {
+    return { status: "error", message: "Enter a valid email address." };
+  }
+
+  const { email, next } = parsed.data;
+  const origin = (await headers()).get("origin") ?? "";
+  const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent(
+    next && next.startsWith("/") ? next : "/account"
+  )}`;
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo },
+  });
+
+  if (error) {
+    return { status: "error", message: "Could not send the link. Try again.", email };
+  }
+  return { status: "sent", email };
+}
