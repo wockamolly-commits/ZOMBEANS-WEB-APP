@@ -12,7 +12,7 @@ export type LoginState = {
 
 const schema = z.object({
   email: z.email({ error: "Enter a valid email address." }).trim(),
-  next: z.string().optional(),
+  next: z.string().max(200).optional(),
 });
 
 export async function requestMagicLink(
@@ -28,7 +28,7 @@ export async function requestMagicLink(
   }
 
   const { email, next } = parsed.data;
-  const origin = (await headers()).get("origin") ?? "";
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get("origin") ?? "";
   const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent(
     next && next.startsWith("/") ? next : "/account"
   )}`;

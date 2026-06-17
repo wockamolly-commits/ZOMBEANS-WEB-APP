@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
@@ -9,7 +9,7 @@ import { requestMagicLink, type LoginState } from "./actions";
 
 const initial: LoginState = { status: "idle" };
 
-export default function LoginPage() {
+function LoginForm() {
   const next = useSearchParams().get("next") ?? "";
   const [state, action, pending] = useActionState(requestMagicLink, initial);
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
                 />
               </label>
               {state.status === "error" && (
-                <p className="rounded-lg border border-zb-danger/40 bg-zb-danger/10 px-3 py-2 text-xs text-zb-cream">
+                <p role="alert" className="rounded-lg border border-zb-danger/40 bg-zb-danger/10 px-3 py-2 text-xs text-zb-cream">
                   {state.message}
                 </p>
               )}
@@ -60,5 +60,13 @@ export default function LoginPage() {
       </DoodleBg>
       <Footer />
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
