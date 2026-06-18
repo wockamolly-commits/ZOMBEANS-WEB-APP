@@ -340,22 +340,34 @@ export function CheckoutForm({
                             }}
                             className="peer sr-only"
                           />
-                          <span className="block rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm transition hover:border-zb-sage peer-checked:border-zb-bone peer-checked:bg-zb-bone/10">
+                          <span className="block rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm transition hover:border-zb-sage peer-checked:border-zb-bone peer-checked:bg-zb-bone/10 peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone">
                             <span className="font-semibold">{a.label || "Address"}</span>
                             <span className="ml-2 text-zb-cream/60">{a.street}{a.barangay ? `, ${a.barangay}` : ""}</span>
                           </span>
                         </label>
                       ))}
                     </div>
+                    {selectedAddressId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddressId("");
+                          setDeliveryTier("");
+                        }}
+                        className="mt-3 text-sm font-semibold text-zb-bone hover:underline"
+                      >
+                        Enter a new address instead
+                      </button>
+                    )}
                   </fieldset>
                 )}
                 <label className="text-sm font-medium sm:col-span-2">
                   Delivery address
-                  <textarea name="street" required={!selectedAddressId} autoComplete="street-address" className={textareaClass} placeholder="House number, street, subdivision" />
+                  <textarea name="street" required={!selectedAddressId} autoComplete="street-address" onChange={() => selectedAddressId && setSelectedAddressId("")} className={textareaClass} placeholder="House number, street, subdivision" />
                 </label>
                 <label className="text-sm font-medium">
                   Barangay
-                  <input name="barangay" required={!selectedAddressId} className={inputClass} placeholder="Barangay" />
+                  <input name="barangay" required={!selectedAddressId} onChange={() => selectedAddressId && setSelectedAddressId("")} className={inputClass} placeholder="Barangay" />
                 </label>
                 <label className="text-sm font-medium">
                   Landmark
