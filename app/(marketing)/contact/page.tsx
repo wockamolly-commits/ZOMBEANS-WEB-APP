@@ -1,6 +1,7 @@
 import { Clock, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
+import { DoodleBg } from "@/components/shared/DoodleBg";
 
 export const metadata = { title: "Contact" };
 
@@ -8,8 +9,9 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="flex-1">
-        <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
+      <DoodleBg className="flex-1">
+        <main>
+          <section className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16">
           <p className="text-xs font-semibold tracking-[0.2em] text-zb-bone">CONTACT</p>
           <h1 className="font-display text-4xl sm:text-5xl text-zb-cream mt-2">Say hi.</h1>
           <p className="mt-3 text-zb-cream/80">We&apos;re easiest to reach on Facebook or by phone.</p>
@@ -31,8 +33,9 @@ export default function ContactPage() {
               <a className="hover:text-zb-cream" href="https://facebook.com/ZombeansOfficial" target="_blank" rel="noreferrer">@ZombeansOfficial</a>
             </p>
           </div>
-        </section>
-      </main>
+          </section>
+        </main>
+      </DoodleBg>
       <Footer />
     </>
   );
