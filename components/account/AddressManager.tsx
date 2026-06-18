@@ -35,14 +35,14 @@ export function AddressManager({ addresses }: { addresses: SavedAddress[] }) {
               <div className="flex shrink-0 items-center gap-1">
                 {!a.is_default && (
                   <form action={setDefaultAddress.bind(null, a.id)}>
-                    <button type="submit" title="Set default" className="rounded-md p-2 text-zb-cream/60 hover:bg-zb-primary-strong hover:text-zb-bone">
-                      <Star className="size-4" />
+                    <button type="submit" aria-label={`Set "${a.label || "address"}" as default`} title="Set default" className="rounded-md p-2 text-zb-cream/60 hover:bg-zb-primary-strong hover:text-zb-bone">
+                      <Star className="size-4" aria-hidden />
                     </button>
                   </form>
                 )}
                 <form action={deleteAddress.bind(null, a.id)}>
-                  <button type="submit" title="Delete" className="rounded-md p-2 text-zb-cream/60 hover:bg-zb-primary-strong hover:text-zb-danger">
-                    <Trash2 className="size-4" />
+                  <button type="submit" aria-label={`Delete "${a.label || "address"}"`} title="Delete" className="rounded-md p-2 text-zb-cream/60 hover:bg-zb-primary-strong hover:text-zb-danger">
+                    <Trash2 className="size-4" aria-hidden />
                   </button>
                 </form>
               </div>
