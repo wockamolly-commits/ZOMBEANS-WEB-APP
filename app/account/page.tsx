@@ -19,9 +19,13 @@ export default async function AccountPage() {
   const addresses = await getSavedAddresses();
 
   const supabase = await createClient();
+  // RLS already restricts to the current user; the explicit user_id filter is
+  // defense-in-depth (orders.user_id is nullable for guests, and policies are
+  // OR-combined, so a future broad SELECT policy can't leak others' orders here).
   const { data: orders } = await supabase
     .from("orders")
-    .select("short_code, status, service_mode, total_cents, placed_at")
+    .select("short_code, status, total_cents, placed_at")
+    .eq("user_id", user.id)
     .order("placed_at", { ascending: false });
 
   return (
