@@ -42,10 +42,12 @@ const modes = [
 
 export function CheckoutForm({
   isLoggedIn,
+  email,
   profile,
   savedAddresses,
 }: {
   isLoggedIn: boolean;
+  email: string | null;
   profile: { display_name: string | null; phone: string | null };
   savedAddresses: SavedAddress[];
 }) {
@@ -190,11 +192,20 @@ export function CheckoutForm({
     >
       <input type="hidden" name="serviceMode" value={mode} />
       <div className="space-y-7">
-        {!isLoggedIn && (
+        {isLoggedIn ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
+            <span className="text-zb-cream/70">
+              Signed in{email ? <> as <span className="font-medium text-zb-cream">{email}</span></> : ""}.
+            </span>
+            <Link href="/auth/signout?next=/checkout" className="font-semibold text-zb-bone hover:underline">
+              Not you?
+            </Link>
+          </div>
+        ) : (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
             <span className="text-zb-cream/70">Checking out as a guest.</span>
             <Link href="/login?next=/checkout" className="font-semibold text-zb-bone hover:underline">
-              Sign in to save your details &amp; track orders
+              Sign in to save your details &amp; order history
             </Link>
           </div>
         )}

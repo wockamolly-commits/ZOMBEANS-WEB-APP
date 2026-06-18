@@ -24,6 +24,7 @@ export default async function CheckoutPage() {
           </div>
           <CheckoutForm
             isLoggedIn={!!user}
+            email={user?.email ?? null}
             profile={profile ?? { display_name: null, phone: null }}
             savedAddresses={savedAddresses}
           />
