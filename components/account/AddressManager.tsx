@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
-import { Star, Trash2 } from "lucide-react";
+import { useActionState, useState } from "react";
+import { Check, ChevronDown, MapPin, Star, Trash2 } from "lucide-react";
+import { Select } from "@base-ui/react/select";
 import { DELIVERY_TIERS } from "@/lib/checkout";
+import { formatPeso } from "@/lib/peso";
 import type { SavedAddress } from "@/lib/auth";
 import {
   addAddress,
@@ -17,6 +19,7 @@ const initial: AddressState = { status: "idle" };
 
 export function AddressManager({ addresses }: { addresses: SavedAddress[] }) {
   const [state, action, pending] = useActionState(addAddress, initial);
+  const [tier, setTier] = useState("");
   return (
     <div className="space-y-5">
       {addresses.length > 0 && (
@@ -58,12 +61,37 @@ export function AddressManager({ addresses }: { addresses: SavedAddress[] }) {
         </label>
         <label className="text-sm font-medium text-zb-cream">
           Distance tier
-          <select name="tier" required defaultValue="" className={inputClass}>
-            <option value="" disabled>Choose distance</option>
-            {DELIVERY_TIERS.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
+          <Select.Root items={DELIVERY_TIERS} name="tier" required value={tier} onValueChange={(value) => setTier(value ?? "")}>
+            <Select.Trigger className="group mt-2 flex h-11 w-full items-center rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-4 text-left text-sm text-zb-cream outline-none transition hover:border-zb-sage data-[popup-open]:border-zb-bone data-[popup-open]:ring-2 data-[popup-open]:ring-zb-bone/20 focus-visible:border-zb-bone focus-visible:ring-2 focus-visible:ring-zb-bone/20">
+              <MapPin className="mr-3 size-4 shrink-0 text-zb-bone" />
+              <Select.Value placeholder="Choose distance" className="flex-1 truncate" />
+              <ChevronDown className="ml-3 size-4 shrink-0 text-zb-cream/50 transition group-data-[popup-open]:rotate-180 group-data-[popup-open]:text-zb-bone" />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Positioner sideOffset={8} align="start" alignItemWithTrigger={false} className="z-50">
+                <Select.Popup className="w-[var(--anchor-width)] min-w-64 origin-[var(--transform-origin)] rounded-2xl border border-zb-bone/45 bg-zb-primary-dark p-2 text-zb-cream shadow-[0_24px_70px_rgba(0,0,0,0.55)] outline-none transition data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+                  <div className="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-zb-bone/75">
+                    Distance from Zombeans
+                  </div>
+                  <Select.List className="overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(229,192,123,0.6)_transparent] [scrollbar-width:thin]">
+                    {DELIVERY_TIERS.map((t) => (
+                      <Select.Item
+                        key={t.value}
+                        value={t.value}
+                        className="grid min-h-11 cursor-default grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl px-3 text-sm outline-none transition text-zb-cream/75 data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:font-bold data-[selected]:text-zb-primary-dark"
+                      >
+                        <Select.ItemText>{t.label}</Select.ItemText>
+                        <span className="font-mono-tabular text-xs">{formatPeso(t.feeCents)}</span>
+                        <Select.ItemIndicator>
+                          <Check className="size-4" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                    ))}
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
         </label>
         <label className="text-sm font-medium text-zb-cream sm:col-span-2">
           Street
