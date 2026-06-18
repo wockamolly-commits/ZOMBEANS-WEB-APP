@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import * as z from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-next";
 
 export type LoginState = {
   status: "idle" | "sent" | "error";
@@ -30,7 +31,7 @@ export async function requestMagicLink(
   const { email, next } = parsed.data;
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? (await headers()).get("origin") ?? "";
   const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent(
-    next && next.startsWith("/") ? next : "/account"
+    safeNextPath(next)
   )}`;
 
   const supabase = await createClient();
