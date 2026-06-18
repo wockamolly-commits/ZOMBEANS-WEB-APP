@@ -9,9 +9,10 @@ export async function AuthNav() {
   return (
     <Link
       href={href}
+      aria-label={label}
       className="inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-zb-cream/85 transition hover:bg-zb-primary-strong hover:text-zb-cream"
     >
-      <CircleUserRound className="size-4" />
+      <CircleUserRound className="size-4" aria-hidden />
       <span className="hidden sm:inline">{label}</span>
     </Link>
   );
