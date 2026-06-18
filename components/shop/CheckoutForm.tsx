@@ -10,20 +10,24 @@ import {
   Coffee,
   CreditCard,
   ChevronDown,
+  LogIn,
   MapPin,
   ShoppingBag,
   Store,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Select } from "@base-ui/react/select";
 import { getCartSubtotal, readCart, type CartLine } from "@/lib/cart";
 import {
   DELIVERY_TIERS,
   generatePickupSlots,
   getDeliveryFeeCents,
+  type PickupSlot,
   type ServiceMode,
 } from "@/lib/checkout";
 import { formatPeso } from "@/lib/peso";
+import { placeOrder, type PlaceOrderInput } from "@/app/actions/checkout";
+import type { SavedAddress } from "@/lib/auth";
 
 const inputClass =
   "mt-2 h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-4 text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none focus:ring-2 focus:ring-zb-bone/20";
@@ -31,22 +35,53 @@ const textareaClass = `${inputClass} min-h-28 resize-y py-3`;
 
 const modes = [
   { value: "dine_in", label: "Dine-in", detail: "Enjoy it at the cafe", icon: Coffee },
+  { value: "take_out", label: "Take Out", detail: "Grab it at the counter", icon: ShoppingBag },
   { value: "pickup", label: "Pickup", detail: "Ready at your chosen time", icon: Store },
   { value: "delivery", label: "Delivery", detail: "Within 6 km of the cafe", icon: Bike },
 ] as const;
 
-export function CheckoutForm() {
+export function CheckoutForm({
+  isLoggedIn,
+  profile,
+  savedAddresses,
+}: {
+  isLoggedIn: boolean;
+  profile: { display_name: string | null; phone: string | null };
+  savedAddresses: SavedAddress[];
+}) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
   const [pickupTime, setPickupTime] = useState<string | null>(null);
   const [deliveryTier, setDeliveryTier] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [reviewed, setReviewed] = useState(false);
-  const pickupSlots = useMemo(() => generatePickupSlots(), []);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
+    generatePickupSlots()
+  );
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setLines(readCart()), 0);
     return () => window.clearTimeout(timeout);
   }, []);
+
+  // Keep the slot list pruned to upcoming times while the page stays open.
+  useEffect(() => {
+    const id = window.setInterval(
+      () => setPickupSlots(generatePickupSlots()),
+      30_000
+    );
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Drop a selected time once it slips into the past.
+  useEffect(() => {
+    if (pickupTime && !pickupSlots.some((slot) => slot.value === pickupTime)) {
+      setPickupTime(null);
+    }
+  }, [pickupSlots, pickupTime]);
 
   if (lines === null) return <div className="min-h-96" aria-label="Loading checkout" />;
 
@@ -71,13 +106,86 @@ export function CheckoutForm() {
     event.preventDefault();
     if (!event.currentTarget.reportValidity()) return;
     setReviewed(true);
+    setSubmitError(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function handlePlaceOrder() {
+    const form = formRef.current;
+    if (!form || !lines || lines.length === 0) return;
+    if (!form.reportValidity()) {
+      setReviewed(false);
+      return;
+    }
+
+    const data = new FormData(form);
+    const input: PlaceOrderInput = {
+      serviceMode: mode,
+      customerName: String(data.get("customerName") ?? ""),
+      customerPhone: data.get("customerPhone")
+        ? String(data.get("customerPhone"))
+        : undefined,
+      notes: data.get("notes") ? String(data.get("notes")) : undefined,
+      paymentMethod: "cash",
+      lines,
+      pickupTime: mode === "pickup" ? pickupTime ?? undefined : undefined,
+      delivery:
+        mode === "delivery" && isLoggedIn
+          ? (() => {
+              const saved = savedAddresses.find((a) => a.id === selectedAddressId);
+              if (saved) {
+                return {
+                  street: saved.street,
+                  barangay: saved.barangay ?? undefined,
+                  landmark: saved.landmark ?? undefined,
+                  tier: saved.tier,
+                };
+              }
+              if (deliveryTier && deliveryTier !== "out-of-zone") {
+                return {
+                  street: String(data.get("street") ?? ""),
+                  barangay: data.get("barangay") ? String(data.get("barangay")) : undefined,
+                  landmark: data.get("landmark") ? String(data.get("landmark")) : undefined,
+                  tier: deliveryTier as "tier-2" | "tier-4" | "tier-6",
+                };
+              }
+              return undefined;
+            })()
+          : undefined,
+    };
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const result = await placeOrder(input);
+      if (result && !result.ok) {
+        setSubmitError(result.error);
+        setSubmitting(false);
+      }
+      // On success the server action calls redirect() — the browser
+      // navigates and this component unmounts, so we don't reach here.
+    } catch (err) {
+      // Next.js's redirect() throws an internal NEXT_REDIRECT signal
+      // that the framework catches at the boundary. Anything else is
+      // a real error.
+      const digest =
+        err && typeof err === "object" && "digest" in err
+          ? String((err as { digest?: unknown }).digest)
+          : "";
+      if (digest.startsWith("NEXT_REDIRECT")) return;
+      setSubmitError(err instanceof Error ? err.message : "Failed to place order.");
+      setSubmitting(false);
+    }
   }
 
   return (
     <form
+      ref={formRef}
       onSubmit={reviewOrder}
-      onInput={() => setReviewed(false)}
+      onInput={() => {
+        setReviewed(false);
+        setSubmitError(null);
+      }}
       className="grid gap-8 lg:grid-cols-[1fr_23rem]"
     >
       <input type="hidden" name="serviceMode" value={mode} />
@@ -90,7 +198,7 @@ export function CheckoutForm() {
               <p className="text-sm text-zb-cream/60">How are you getting your order?</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {modes.map((entry) => {
               const Icon = entry.icon;
               const selected = mode === entry.value;
@@ -125,41 +233,13 @@ export function CheckoutForm() {
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <label className="text-sm font-medium">
               Name
-              <input name="customerName" required autoComplete="name" className={inputClass} placeholder="Your name" />
+              <input name="customerName" required autoComplete="name" defaultValue={profile.display_name ?? ""} className={inputClass} placeholder="Your name" />
             </label>
             {mode !== "dine_in" && (
               <label className="text-sm font-medium">
                 Mobile number
-                <input name="customerPhone" required inputMode="tel" autoComplete="tel" pattern="(?:\+63|0)9\d{9}" title="Use a Philippine mobile number such as 09186056360" className={inputClass} placeholder="09XX XXX XXXX" />
+                <input name="customerPhone" required inputMode="tel" autoComplete="tel" defaultValue={profile.phone ?? ""} pattern="(?:\+63|0)9\d{9}" title="Use a Philippine mobile number such as 09186056360" className={inputClass} placeholder="09XX XXX XXXX" />
               </label>
-            )}
-
-            {mode === "dine_in" && (
-              <fieldset className="sm:col-span-2">
-                <legend className="text-sm font-medium">Table number</legend>
-                <p className="mt-1 text-xs text-zb-cream/50">
-                  Choose the number displayed on your table.
-                </p>
-                <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
-                  {Array.from({ length: 12 }, (_, index) => {
-                    const table = index + 1;
-                    return (
-                      <label key={table} className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="tableNumber"
-                          value={table}
-                          required
-                          className="peer sr-only"
-                        />
-                        <span className="flex h-14 items-center justify-center rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 font-mono-tabular text-sm font-bold text-zb-cream/70 transition hover:border-zb-sage hover:bg-zb-sage/10 peer-checked:border-zb-bone peer-checked:bg-zb-bone peer-checked:text-zb-primary-dark peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-zb-primary-strong">
-                          {String(table).padStart(2, "0")}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </fieldset>
             )}
 
             {mode === "pickup" && (
@@ -200,9 +280,15 @@ export function CheckoutForm() {
                               <Select.Item
                                 key={slot.value}
                                 value={slot.value}
-                                className="grid min-h-11 cursor-default grid-cols-[1fr_auto] items-center rounded-xl px-3 font-mono-tabular text-sm text-zb-cream/75 outline-none transition data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:font-bold data-[selected]:text-zb-primary-dark"
+                                className={`grid min-h-11 cursor-default grid-cols-[1fr_auto] items-center rounded-xl px-3 font-mono-tabular text-sm outline-none transition ${
+                                  slot.special
+                                    ? "font-bold text-emerald-300 data-[highlighted]:bg-emerald-500/25 data-[highlighted]:text-emerald-200 data-[selected]:bg-emerald-500 data-[selected]:text-zb-primary-dark"
+                                    : "text-zb-cream/75 data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:font-bold data-[selected]:text-zb-primary-dark"
+                                }`}
                               >
-                                <Select.ItemText>{slot.label}</Select.ItemText>
+                                <Select.ItemText>
+                                  {slot.special ? `${slot.label} 🌿` : slot.label}
+                                </Select.ItemText>
                                 <Select.ItemIndicator className="ml-4">
                                   <Check className="size-4" />
                                 </Select.ItemIndicator>
@@ -221,15 +307,55 @@ export function CheckoutForm() {
               </label>
             )}
 
-            {mode === "delivery" && (
+            {mode === "delivery" && !isLoggedIn && (
+              <div className="sm:col-span-2 rounded-2xl border border-zb-bone/40 bg-zb-bone/10 p-5">
+                <p className="flex items-center gap-2 font-semibold text-zb-bone">
+                  <LogIn className="size-4" /> Delivery needs an account
+                </p>
+                <p className="mt-2 text-sm leading-6 text-zb-cream/70">
+                  For safety and accountability, delivery orders require a signed-in
+                  customer. Dine-in, take out, and pickup stay available as a guest.
+                </p>
+                <Link href="/login?next=/checkout" className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft">
+                  Sign in to continue
+                </Link>
+              </div>
+            )}
+            {mode === "delivery" && isLoggedIn && (
               <>
+                {savedAddresses.length > 0 && (
+                  <fieldset className="sm:col-span-2">
+                    <legend className="text-sm font-medium">Saved addresses</legend>
+                    <div className="mt-3 grid gap-2">
+                      {savedAddresses.map((a) => (
+                        <label key={a.id} className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="savedAddress"
+                            value={a.id}
+                            checked={selectedAddressId === a.id}
+                            onChange={() => {
+                              setSelectedAddressId(a.id);
+                              setDeliveryTier(a.tier);
+                            }}
+                            className="peer sr-only"
+                          />
+                          <span className="block rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm transition hover:border-zb-sage peer-checked:border-zb-bone peer-checked:bg-zb-bone/10">
+                            <span className="font-semibold">{a.label || "Address"}</span>
+                            <span className="ml-2 text-zb-cream/60">{a.street}{a.barangay ? `, ${a.barangay}` : ""}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                )}
                 <label className="text-sm font-medium sm:col-span-2">
                   Delivery address
-                  <textarea name="street" required autoComplete="street-address" className={textareaClass} placeholder="House number, street, subdivision" />
+                  <textarea name="street" required={!selectedAddressId} autoComplete="street-address" className={textareaClass} placeholder="House number, street, subdivision" />
                 </label>
                 <label className="text-sm font-medium">
                   Barangay
-                  <input name="barangay" required className={inputClass} placeholder="Barangay" />
+                  <input name="barangay" required={!selectedAddressId} className={inputClass} placeholder="Barangay" />
                 </label>
                 <label className="text-sm font-medium">
                   Landmark
@@ -342,14 +468,29 @@ export function CheckoutForm() {
         </div>
 
         {!reviewed ? (
-          <button type="submit" disabled={deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="submit" disabled={deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !isLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
             Review order <Check className="size-4" />
           </button>
         ) : (
           <div className="mt-5 rounded-xl border border-zb-bone/45 bg-zb-bone/10 p-4">
             <p className="flex items-center gap-2 font-semibold text-zb-bone"><Check className="size-4" /> Ready for submission</p>
-            <p className="mt-2 text-xs leading-5 text-zb-cream/65">Your details and totals look good. Final order placement will be enabled when the secure `place_order()` backend is connected.</p>
-            <button type="button" disabled className="mt-4 h-11 w-full rounded-lg bg-zb-bone font-semibold text-zb-primary-dark opacity-50">Place order</button>
+            <p className="mt-2 text-xs leading-5 text-zb-cream/65">
+              We&apos;ll send your order to the cafe and give you a tracking code.
+              Pay in cash at pickup or on delivery.
+            </p>
+            {submitError && (
+              <p className="mt-3 rounded-lg border border-zb-danger/40 bg-zb-danger/10 px-3 py-2 text-xs text-zb-cream">
+                {submitError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handlePlaceOrder}
+              disabled={submitting}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-zb-bone font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {submitting ? "Placing order…" : "Place order"}
+            </button>
           </div>
         )}
         <p className="mt-4 flex items-start gap-2 text-[11px] leading-5 text-zb-cream/45"><MapPin className="mt-0.5 size-3.5 shrink-0" /> San Julio Subdivision, Nangka St, Barangay 2, San Carlos City</p>
