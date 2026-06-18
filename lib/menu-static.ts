@@ -636,7 +636,7 @@ export const MENU_GROUPS: MenuGroup[] = [
     slug: "food",
     name: "Food",
     blurb: "Bowls, croffles, sandwiches, sides.",
-    kind: "Eats",
+    kind: "Munchies",
     categorySlugs: ["rice-bowls", "toasts", "croffles", "chicken", "sides"],
     previewImage: "/images/menu/food/burger-steak.png",
     patternImage: "/images/brand/patterns/food.svg",
