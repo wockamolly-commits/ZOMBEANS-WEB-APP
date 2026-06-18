@@ -41,7 +41,12 @@ export async function requestMagicLink(
   });
 
   if (error) {
-    return { status: "error", message: "Could not send the link. Try again.", email };
+    console.error("[login] signInWithOtp failed:", error.status, error.message);
+    const message =
+      error.status === 429
+        ? "Too many sign-in attempts. Please wait a bit and try again."
+        : "Could not send the link. Try again.";
+    return { status: "error", message, email };
   }
   return { status: "sent", email };
 }
