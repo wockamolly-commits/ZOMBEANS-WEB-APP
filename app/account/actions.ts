@@ -39,7 +39,10 @@ export async function updateProfile(
     display_name: parsed.data.display_name || null,
     phone: parsed.data.phone || null,
   });
-  if (error) return { status: "error", message: "Could not save. Try again." };
+  if (error) {
+    console.error("[account] profile upsert failed:", error);
+    return { status: "error", message: "Could not save. Try again." };
+  }
 
   revalidatePath("/account");
   return { status: "saved" };
@@ -82,7 +85,10 @@ export async function addAddress(
     landmark: parsed.data.landmark || null,
     tier: parsed.data.tier,
   });
-  if (error) return { status: "error", message: "Could not save address." };
+  if (error) {
+    console.error("[account] address insert failed:", error);
+    return { status: "error", message: "Could not save address." };
+  }
 
   revalidatePath("/account");
   return { status: "added" };
