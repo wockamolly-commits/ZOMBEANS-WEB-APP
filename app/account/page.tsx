@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
@@ -5,6 +6,8 @@ import { DoodleBg } from "@/components/shared/DoodleBg";
 import { getCurrentUser, getCustomerProfile, getSavedAddresses } from "@/lib/auth";
 import { ProfileForm } from "@/components/account/ProfileForm";
 import { AddressManager } from "@/components/account/AddressManager";
+import { formatPeso } from "@/lib/peso";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Your account" };
 export const dynamic = "force-dynamic";
@@ -14,6 +17,12 @@ export default async function AccountPage() {
   if (!user) redirect("/login?next=/account");
   const profile = await getCustomerProfile();
   const addresses = await getSavedAddresses();
+
+  const supabase = await createClient();
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("short_code, status, service_mode, total_cents, placed_at")
+    .order("placed_at", { ascending: false });
 
   return (
     <>
@@ -44,7 +53,32 @@ export default async function AccountPage() {
             </div>
           </section>
 
-          {/* ORDERS section added in Task 11 */}
+          <section className="mt-6 rounded-2xl border border-zb-sage/25 bg-zb-primary-strong/75 p-6">
+            <h2 className="font-display text-2xl text-zb-cream">YOUR ORDERS</h2>
+            {!orders || orders.length === 0 ? (
+              <p className="mt-3 text-sm text-zb-cream/60">
+                No orders yet. <Link href="/menu" className="text-zb-bone hover:underline">Browse the menu</Link>.
+              </p>
+            ) : (
+              <ul className="mt-4 divide-y divide-zb-sage/20">
+                {orders.map((o) => (
+                  <li key={o.short_code}>
+                    <Link href={`/order/${o.short_code}`} className="flex items-center justify-between gap-3 py-3 transition hover:text-zb-bone">
+                      <div className="min-w-0">
+                        <p className="font-mono-tabular font-semibold text-zb-cream">{o.short_code}</p>
+                        <p className="text-xs text-zb-cream/55">
+                          {new Date(o.placed_at as string).toLocaleString("en-PH")} · {o.status}
+                        </p>
+                      </div>
+                      <span className="font-mono-tabular text-sm text-zb-cream/85">
+                        {formatPeso(o.total_cents as number)}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </main>
       </DoodleBg>
       <Footer />
