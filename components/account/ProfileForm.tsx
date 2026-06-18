@@ -27,8 +27,8 @@ export function ProfileForm({
         <button type="submit" disabled={pending} className="inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-55">
           {pending ? "Saving…" : "Save profile"}
         </button>
-        {state.status === "saved" && <span className="text-sm text-zb-bone">Saved.</span>}
-        {state.status === "error" && <span className="text-sm text-zb-danger">{state.message}</span>}
+        {state.status === "saved" && <span aria-live="polite" className="text-sm text-zb-bone">Saved.</span>}
+        {state.status === "error" && <span role="alert" className="text-sm text-zb-danger">{state.message}</span>}
       </div>
     </form>
   );
