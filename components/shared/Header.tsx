@@ -3,6 +3,7 @@ import { Logo } from "./Logo";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CartLink } from "@/components/shop/CartLink";
+import { AuthNav } from "./AuthNav";
 
 export function Header() {
   return (
@@ -22,6 +23,7 @@ export function Header() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <AuthNav />
             <CartLink />
             <Link
               href="/menu"
