@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
-import { getCurrentUser, getCustomerProfile } from "@/lib/auth";
+import { getCurrentUser, getCustomerProfile, getSavedAddresses } from "@/lib/auth";
 import { ProfileForm } from "@/components/account/ProfileForm";
+import { AddressManager } from "@/components/account/AddressManager";
 
 export const metadata = { title: "Your account" };
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
   const profile = await getCustomerProfile();
+  const addresses = await getSavedAddresses();
 
   return (
     <>
@@ -34,7 +36,14 @@ export default async function AccountPage() {
             </div>
           </section>
 
-          {/* ADDRESSES section added in Task 10 */}
+          <section className="mt-6 rounded-2xl border border-zb-sage/25 bg-zb-primary-strong/75 p-6">
+            <h2 className="font-display text-2xl text-zb-cream">DELIVERY ADDRESSES</h2>
+            <p className="mt-1 text-sm text-zb-cream/60">Reused when you order delivery.</p>
+            <div className="mt-5">
+              <AddressManager addresses={addresses} />
+            </div>
+          </section>
+
           {/* ORDERS section added in Task 11 */}
         </main>
       </DoodleBg>
