@@ -22,11 +22,14 @@ import {
   DELIVERY_TIERS,
   generatePickupSlots,
   getDeliveryFeeCents,
+  isStoreOpen,
+  STORE_HOURS_SUMMARY,
   type PickupSlot,
   type ServiceMode,
 } from "@/lib/checkout";
 import { formatPeso } from "@/lib/peso";
 import { placeOrder, type PlaceOrderInput } from "@/app/actions/checkout";
+import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
 import type { SavedAddress } from "@/lib/auth";
 
 const inputClass =
@@ -71,18 +74,24 @@ export function CheckoutForm({
   const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
     generatePickupSlots()
   );
+  // Start optimistically open to avoid a closed flash during hydration; the
+  // effect below corrects it on mount and keeps it current.
+  const [storeOpen, setStoreOpen] = useState(true);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setLines(readCart()), 0);
     return () => window.clearTimeout(timeout);
   }, []);
 
-  // Keep the slot list pruned to upcoming times while the page stays open.
+  // Keep the slot list and open/closed state current while the page stays
+  // open, so ordering re-enables on its own the moment the café opens.
   useEffect(() => {
-    const id = window.setInterval(
-      () => setPickupSlots(generatePickupSlots()),
-      30_000
-    );
+    const refresh = () => {
+      setPickupSlots(generatePickupSlots());
+      setStoreOpen(isStoreOpen());
+    };
+    refresh();
+    const id = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -101,6 +110,32 @@ export function CheckoutForm({
         <ShoppingBag className="mx-auto size-12 text-zb-bone" />
         <h1 className="mt-5 font-display text-5xl">NOTHING TO CHECK OUT</h1>
         <p className="mt-3 text-zb-cream/70">Your next favorite is still on the menu.</p>
+        <Link href="/menu" className="mt-7 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft">
+          Browse the menu
+        </Link>
+      </div>
+    );
+  }
+
+  // Ordering is only available during business hours. This screen re-enables
+  // itself automatically once the café opens (see the refresh interval above).
+  if (!storeOpen) {
+    return (
+      <div className="mx-auto max-w-xl py-16 text-center">
+        <Clock3 className="mx-auto size-12 text-zb-bone" />
+        <h1 className="mt-5 font-display text-5xl">THE CAFÉ IS CLOSED</h1>
+        <p className="mt-3 text-zb-cream/70">
+          Ordering is paused outside our operating hours. Your cart is saved —
+          come back when we&apos;re open and check out then.
+        </p>
+        <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
+          {STORE_HOURS_SUMMARY.map((row) => (
+            <div key={row.days} className="flex items-center justify-between gap-4">
+              <dt className="font-semibold text-zb-cream">{row.days}</dt>
+              <dd className="font-mono-tabular text-zb-cream/70">{row.hours}</dd>
+            </div>
+          ))}
+        </dl>
         <Link href="/menu" className="mt-7 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft">
           Browse the menu
         </Link>
@@ -204,6 +239,7 @@ export function CheckoutForm({
     >
       <input type="hidden" name="serviceMode" value={mode} />
       <div className="space-y-7">
+        <KitchenClosingBanner />
         {isLoggedIn ? (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
             <span className="text-zb-cream/70">

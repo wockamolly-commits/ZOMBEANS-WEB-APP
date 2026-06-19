@@ -3,6 +3,7 @@ import Image from "next/image";
 import { buttonVariants } from "@/components/ui/button";
 import { Coffee, Clock } from "lucide-react";
 import { DoodleBg } from "@/components/shared/DoodleBg";
+import { OpenStatusBadge } from "@/components/marketing/OpenStatusBadge";
 import { cn } from "@/lib/utils";
 
 export function Hero() {
@@ -10,10 +11,7 @@ export function Hero() {
     <DoodleBg className="border-b border-border">
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24 grid gap-10 lg:grid-cols-[1.1fr_1fr] items-center">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-zb-sage/40 bg-zb-primary-strong/60 px-3 py-1 text-xs font-semibold tracking-widest text-zb-bone">
-            <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-            OPEN NOW · 7 AM – 10 PM
-          </div>
+          <OpenStatusBadge />
           <h1 className="font-display mt-4 text-5xl sm:text-6xl lg:text-7xl leading-[0.95] text-zb-cream">
             REVIVE THE DEAD
             <br />

@@ -22,7 +22,7 @@ export default function ContactPage() {
             </p>
             <p className="flex items-center gap-3">
               <Clock className="size-5 shrink-0 text-zb-bone" />
-              <span>7 AM – 10 PM, every day</span>
+              <span>Mon–Fri 8 AM – 8 PM · Sat–Sun 8 AM – 9 PM</span>
             </p>
             <p className="flex items-center gap-3">
               <Phone className="size-5 shrink-0 text-zb-bone" />

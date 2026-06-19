@@ -1,9 +1,76 @@
 export type ServiceMode = "dine_in" | "take_out" | "pickup" | "delivery";
 
-export const STORE_OPEN_HOUR = 7;
-export const STORE_CLOSE_HOUR = 22;
+// Operating hours (Asia/Manila). The café opens at the same time every day
+// but closes an hour later on weekends.
+export const STORE_OPEN_HOUR = 8; // 8:00 AM
+export const STORE_CLOSE_WEEKDAY_HOUR = 20; // 8:00 PM, Mon–Fri
+export const STORE_CLOSE_WEEKEND_HOUR = 21; // 9:00 PM, Sat–Sun
 export const DEFAULT_PREP_MINUTES = 20;
 export const PICKUP_SLOT_MINUTES = 15;
+// How long before closing time we start warning customers that the kitchen is
+// about to stop taking orders (e.g. 7:45 PM for an 8:00 PM close).
+export const KITCHEN_CLOSING_SOON_MINUTES = 15;
+
+const MANILA_TZ = "Asia/Manila";
+
+// A short, human-readable summary of the weekly schedule for display.
+export const STORE_HOURS_SUMMARY = [
+  { days: "Mon–Fri", hours: "8:00 AM – 8:00 PM" },
+  { days: "Sat–Sun", hours: "8:00 AM – 9:00 PM" },
+] as const;
+
+// Closing hour for a given day-of-week (0 = Sunday … 6 = Saturday).
+export function getCloseHour(day: number): number {
+  const isWeekend = day === 0 || day === 6;
+  return isWeekend ? STORE_CLOSE_WEEKEND_HOUR : STORE_CLOSE_WEEKDAY_HOUR;
+}
+
+// Resolve the current wall-clock in Manila regardless of the runtime's own
+// timezone, so the open/closed decision is identical on the server and in the
+// browser of an overseas customer.
+function manilaNow(date: Date): { day: number; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: MANILA_TZ,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const dayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return {
+    day: dayMap[get("weekday")] ?? date.getDay(),
+    hour: Number(get("hour")),
+    minute: Number(get("minute")),
+  };
+}
+
+// True while the café is within today's operating window (open inclusive,
+// close exclusive — e.g. ordering stops the moment the clock hits closing).
+export function isStoreOpen(date = new Date()): boolean {
+  const { day, hour } = manilaNow(date);
+  return hour >= STORE_OPEN_HOUR && hour < getCloseHour(day);
+}
+
+// Whole minutes left until today's closing time, or null when the café isn't
+// currently open (before opening, or already closed). Minute-accurate, so it
+// can drive a live countdown near closing.
+export function minutesUntilClose(date = new Date()): number | null {
+  const { day, hour, minute } = manilaNow(date);
+  if (hour < STORE_OPEN_HOUR) return null;
+  const remaining = getCloseHour(day) * 60 - (hour * 60 + minute);
+  return remaining > 0 ? remaining : null;
+}
+
+// True only during the final window before close (the last
+// KITCHEN_CLOSING_SOON_MINUTES the café is open). Flips to false the moment the
+// café closes — by then ordering is already blocked by isStoreOpen().
+export function isKitchenClosingSoon(date = new Date()): boolean {
+  const remaining = minutesUntilClose(date);
+  return remaining !== null && remaining <= KITCHEN_CLOSING_SOON_MINUTES;
+}
 
 export const DELIVERY_TIERS = [
   { value: "tier-2", label: "Up to 2 km", feeCents: 3000 },
@@ -36,7 +103,7 @@ export function generatePickupSlots(now = new Date()): PickupSlot[] {
   );
 
   const close = new Date(now);
-  close.setHours(STORE_CLOSE_HOUR, 0, 0, 0);
+  close.setHours(getCloseHour(now.getDay()), 0, 0, 0);
 
   if (now.getHours() < STORE_OPEN_HOUR) {
     const open = new Date(now);

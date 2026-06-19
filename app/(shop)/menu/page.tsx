@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
+import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
 import { MENU_GROUPS, getGroupItems } from "@/lib/menu-static";
 
 export const metadata = { title: "Our Menu" };
@@ -25,7 +26,8 @@ export default function MenuLandingPage() {
             </p>
           </section>
 
-          <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">
+          <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24 space-y-8">
+            <KitchenClosingBanner />
             <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {MENU_GROUPS.map((group) => {
                 const count = getGroupItems(group).length;

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isStoreOpen } from "@/lib/checkout";
 import type { CartLine } from "@/lib/cart";
 
 export type PlaceOrderInput = {
@@ -35,6 +36,16 @@ export type PlaceOrderResult =
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const supabase = await createClient();
+
+  // The café only accepts orders during business hours. Enforce it here too so
+  // a customer can't slip an order through after the client-side gate closes
+  // (e.g. a stale tab left open past closing time).
+  if (!isStoreOpen()) {
+    return {
+      ok: false,
+      error: "The café is closed right now, so we can't take this order. Please order during our operating hours.",
+    };
+  }
 
   // Cash orders must be tied to an account for tracking and accountability,
   // across every service mode. Enforce it here so a guest can't bypass the

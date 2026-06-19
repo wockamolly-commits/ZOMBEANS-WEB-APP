@@ -57,7 +57,7 @@ export function AboutTeaser() {
             6127 Negros Occidental
           </p>
           <div className="mt-4 space-y-2 text-sm text-zb-cream/85">
-            <p className="flex items-center gap-2.5"><Clock className="size-4 shrink-0 text-zb-bone" /> Open all week · 7 AM – 10 PM</p>
+            <p className="flex items-center gap-2.5"><Clock className="size-4 shrink-0 text-zb-bone" /> Mon–Fri 8 AM – 8 PM · Sat–Sun 8 AM – 9 PM</p>
             <p className="flex items-center gap-2.5"><Phone className="size-4 shrink-0 text-zb-bone" /> <a className="hover:text-zb-cream" href="tel:+639186056360">0918 605 6360</a></p>
             <p className="flex items-center gap-2.5"><MessageCircle className="size-4 shrink-0 text-zb-bone" /> <a className="hover:text-zb-cream" href="https://facebook.com/ZombeansOfficial" target="_blank" rel="noreferrer">@ZombeansOfficial</a></p>
           </div>

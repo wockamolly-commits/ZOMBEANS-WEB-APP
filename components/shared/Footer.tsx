@@ -21,7 +21,8 @@ export function Footer() {
             <br />
             6127 Negros Occidental
           </p>
-          <p className="mt-3 text-sm">Open all week · 7 AM – 10 PM</p>
+          <p className="mt-3 text-sm">Mon–Fri · 8 AM – 8 PM</p>
+          <p className="text-sm">Sat–Sun · 8 AM – 9 PM</p>
         </div>
         <div>
           <p className="font-semibold text-zb-cream mb-3">Connect</p>
