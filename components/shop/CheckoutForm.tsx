@@ -33,9 +33,15 @@ const inputClass =
   "mt-2 h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-4 text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none focus:ring-2 focus:ring-zb-bone/20";
 const textareaClass = `${inputClass} min-h-28 resize-y py-3`;
 
-const modes = [
+// Top-level fulfillment choice. "Take Out" groups the pickup and delivery
+// methods below — it isn't a final mode on its own.
+const topModes = [
   { value: "dine_in", label: "Dine-in", detail: "Enjoy it at the cafe", icon: Coffee },
-  { value: "take_out", label: "Take Out", detail: "Grab it at the counter", icon: ShoppingBag },
+  { value: "take_out", label: "Take Out", detail: "Pickup or delivery", icon: ShoppingBag },
+] as const;
+
+// The two ways to take an order out, revealed once "Take Out" is chosen.
+const takeOutModes = [
   { value: "pickup", label: "Pickup", detail: "Ready at your chosen time", icon: Store },
   { value: "delivery", label: "Delivery", detail: "Within 6 km of the cafe", icon: Bike },
 ] as const;
@@ -54,6 +60,8 @@ export function CheckoutForm({
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
   const [pickupTime, setPickupTime] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] =
+    useState<PlaceOrderInput["paymentMethod"]>("cash");
   const [deliveryTier, setDeliveryTier] = useState("");
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [reviewed, setReviewed] = useState(false);
@@ -100,6 +108,10 @@ export function CheckoutForm({
     );
   }
 
+  const isTakeOut = mode === "pickup" || mode === "delivery";
+  // Cash orders must be tied to an account for tracking and accountability —
+  // this applies to every service mode, not just delivery.
+  const requiresAccount = !isLoggedIn && paymentMethod === "cash";
   const subtotal = getCartSubtotal(lines);
   const deliveryFee = mode === "delivery" ? getDeliveryFeeCents(deliveryTier) : 0;
   const total = subtotal + deliveryFee;
@@ -128,7 +140,7 @@ export function CheckoutForm({
         ? String(data.get("customerPhone"))
         : undefined,
       notes: data.get("notes") ? String(data.get("notes")) : undefined,
-      paymentMethod: "cash",
+      paymentMethod,
       lines,
       pickupTime: mode === "pickup" ? pickupTime ?? undefined : undefined,
       delivery:
@@ -201,6 +213,20 @@ export function CheckoutForm({
               Not you?
             </Link>
           </div>
+        ) : requiresAccount ? (
+          <div className="rounded-xl border border-zb-bone/40 bg-zb-bone/10 p-5">
+            <p className="flex items-center gap-2 font-semibold text-zb-bone">
+              <LogIn className="size-4" /> An account is required to pay with cash
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zb-cream/70">
+              So every cash order can be tracked and accounted for, you&apos;ll need
+              to sign in or create an account before checking out — this applies to
+              dine-in, take out, pickup, and delivery alike.
+            </p>
+            <Link href="/login?next=/checkout" className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft">
+              Sign in or create an account
+            </Link>
+          </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
             <span className="text-zb-cream/70">Checking out as a guest.</span>
@@ -217,16 +243,19 @@ export function CheckoutForm({
               <p className="text-sm text-zb-cream/60">How are you getting your order?</p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {modes.map((entry) => {
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {topModes.map((entry) => {
               const Icon = entry.icon;
-              const selected = mode === entry.value;
+              const selected =
+                entry.value === "take_out" ? isTakeOut : mode === entry.value;
               return (
                 <button
                   key={entry.value}
                   type="button"
                   onClick={() => {
-                    setMode(entry.value);
+                    // "Take Out" defaults to pickup; the sub-options below
+                    // let the customer switch to delivery.
+                    setMode(entry.value === "take_out" ? "pickup" : "dine_in");
                     setReviewed(false);
                   }}
                   className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
@@ -238,6 +267,35 @@ export function CheckoutForm({
               );
             })}
           </div>
+
+          {isTakeOut && (
+            <div className="mt-3 rounded-2xl border border-zb-sage/20 bg-zb-primary-dark/25 p-3 sm:p-4">
+              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-zb-cream/45">
+                How should we get it to you?
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {takeOutModes.map((entry) => {
+                  const Icon = entry.icon;
+                  const selected = mode === entry.value;
+                  return (
+                    <button
+                      key={entry.value}
+                      type="button"
+                      onClick={() => {
+                        setMode(entry.value);
+                        setReviewed(false);
+                      }}
+                      className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
+                    >
+                      <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
+                      <span className="mt-3 block font-semibold">{entry.label}</span>
+                      <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-zb-sage/25 bg-zb-primary-strong/75 p-5 sm:p-6">
@@ -326,14 +384,14 @@ export function CheckoutForm({
               </label>
             )}
 
-            {mode === "delivery" && !isLoggedIn && (
+            {mode === "delivery" && !isLoggedIn && !requiresAccount && (
               <div className="sm:col-span-2 rounded-2xl border border-zb-bone/40 bg-zb-bone/10 p-5">
                 <p className="flex items-center gap-2 font-semibold text-zb-bone">
                   <LogIn className="size-4" /> Delivery needs an account
                 </p>
                 <p className="mt-2 text-sm leading-6 text-zb-cream/70">
                   For safety and accountability, delivery orders require a signed-in
-                  customer. Dine-in, take out, and pickup stay available as a guest.
+                  customer.
                 </p>
                 <Link href="/login?next=/checkout" className="mt-4 inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft">
                   Sign in to continue
@@ -464,10 +522,22 @@ export function CheckoutForm({
           </div>
           <div className="mt-5 space-y-3">
             <label className="flex cursor-pointer items-center gap-4 rounded-xl border border-zb-bone bg-zb-bone/10 p-4">
-              <input type="radio" name="paymentMethod" value="cash" defaultChecked className="accent-zb-bone" />
+              <input type="radio" name="paymentMethod" value="cash" checked={paymentMethod === "cash"} onChange={() => setPaymentMethod("cash")} className="accent-zb-bone" />
               <Banknote className="size-5 text-zb-bone" />
               <span><span className="block font-semibold">Cash</span><span className="text-xs text-zb-cream/55">Pay at the counter or upon delivery</span></span>
             </label>
+            {requiresAccount && (
+              <p className="flex items-start gap-2 rounded-xl border border-zb-bone/40 bg-zb-bone/10 px-4 py-3 text-xs leading-5 text-zb-cream/75">
+                <LogIn className="mt-0.5 size-3.5 shrink-0 text-zb-bone" />
+                <span>
+                  Cash orders require an account.{" "}
+                  <Link href="/login?next=/checkout" className="font-semibold text-zb-bone hover:underline">
+                    Sign in or create an account
+                  </Link>{" "}
+                  to continue.
+                </span>
+              </p>
+            )}
             <div className="flex items-center gap-4 rounded-xl border border-zb-sage/20 bg-zb-primary-dark/25 p-4 opacity-55">
               <CreditCard className="size-5" />
               <span><span className="block font-semibold">GCash, Maya, or card</span><span className="text-xs text-zb-cream/55">Coming with PayMongo integration</span></span>
@@ -499,7 +569,7 @@ export function CheckoutForm({
         </div>
 
         {!reviewed ? (
-          <button type="submit" disabled={deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !isLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="submit" disabled={requiresAccount || deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !isLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
             Review order <Check className="size-4" />
           </button>
         ) : (

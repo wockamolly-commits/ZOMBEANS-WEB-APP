@@ -36,6 +36,18 @@ export type PlaceOrderResult =
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const supabase = await createClient();
 
+  // Cash orders must be tied to an account for tracking and accountability,
+  // across every service mode. Enforce it here so a guest can't bypass the
+  // client-side gate by calling the action directly.
+  if (input.paymentMethod === "cash") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { ok: false, error: "Please sign in or create an account to pay with cash." };
+    }
+  }
+
   const payload = {
     service_mode: input.serviceMode,
     customer_name: input.customerName.trim(),
