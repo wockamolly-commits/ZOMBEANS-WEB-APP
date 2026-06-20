@@ -522,7 +522,7 @@ CREATE TABLE app_settings (
   loyverse_pos_device_id TEXT,
   email_enabled BOOLEAN NOT NULL DEFAULT FALSE,
   maps_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-  paymongo_enabled BOOLEAN NOT NULL DEFAULT TRUE
+  paymongo_enabled BOOLEAN NOT NULL DEFAULT FALSE   -- deferred to Phase 5; cash-only until flipped
 );
 ```
 
@@ -783,15 +783,17 @@ CRON_SECRET
 loyverse_enabled BOOLEAN DEFAULT FALSE   -- skip POS push until token provided
 email_enabled    BOOLEAN DEFAULT FALSE   -- skip Resend until domain verified
 maps_enabled     BOOLEAN DEFAULT FALSE   -- skip Maps picker; fall back to address textarea
-paymongo_enabled BOOLEAN DEFAULT TRUE
+paymongo_enabled BOOLEAN DEFAULT FALSE   -- cash-only until PayMongo wired in Phase 5
 ```
-This lets us ship Phase 1 with stubs for the deferred integrations and flip them on later.
+This lets us ship the core phases (0–4) with stubs for every third-party integration and flip them all on in Phase 5.
 
 ---
 
 ## 11. Development Roadmap
 
-We build in 5 phases so the café can start using the system as early as possible.
+We build **core system features first** — everything the café needs to take and fulfill orders on cash, end to end — and consolidate **all third-party / external system integrations into a single final phase (Phase 5)**. This keeps the critical path free of dependencies we don't control the timing of (API tokens, billing approval, domain/DNS, webhook setup, sending-domain verification). Every integration is already designed behind a feature flag in `app_settings` (§10), so each core phase ships a working stub and the final phase simply flips it on without reworking core flows.
+
+> **What counts as a third-party integration (all deferred to Phase 5):** PayMongo (GCash/Maya/cards), Loyverse POS, Google Maps Platform, Resend (email). SMS (Semaphore) stays in Phase 6+. Supabase (DB/Auth/Storage/Realtime) and Vercel are the core platform, not deferred. A plain Google Maps **deeplink** (a URL with no API key or billing) is allowed in core.
 
 ### Phase 0 — Foundation (Week 1)
 - Next.js 15 + TS + Tailwind + shadcn/ui scaffold
@@ -804,64 +806,67 @@ We build in 5 phases so the café can start using the system as early as possibl
 
 **Exit criteria:** Empty home + menu render with real categories/items/photos. Admin can log in (blank dashboard).
 
-### Phase 1 — Customer Ordering (Weeks 2–3)
+### Phase 1 — Customer Ordering, Core (Weeks 2–3)
 - Home (hero, bestsellers, location, About teaser with approved copy)
 - Full menu page + product detail sheet
 - Cart (server-persisted via `cart_token`)
-- Checkout — all three service modes:
+- Checkout — all three service modes, core paths:
   - **Dine-in:** name + table picker
   - **Pickup:** name + phone + **15-min slot picker** (generated from current time + prep ETA → closing)
-  - **Delivery:** name + phone + address textarea + barangay + landmark + notes (Maps picker swaps in later when `maps_enabled=true`)
-- **Distance-tiered delivery fee** computed server-side; **>6 km blocked with friendly bounce to Pickup**
-- **PayMongo integration** (GCash + Maya + cards) via PaymentIntent/Source flow + webhook handler
-- Cash payment path (status `pending` → staff marks `paid` at counter)
+  - **Delivery:** name + phone + **fallback address form** (textarea + barangay select + landmark + notes). No Maps dependency — `lat/lng` inferred from barangay centroid.
+- **Distance-tiered delivery fee** computed server-side from barangay-centroid → store distance; **>6 km blocked with friendly bounce to Pickup**
+- **Cash payment path only** (status `pending` → staff marks `paid` at counter)
 - `place_order()` RPC + short-code generator
 - Order tracking page with realtime status
 - Mobile sticky cart bar + responsive QA
-- **Email + Maps + Loyverse: stubs only** (feature flags `email_enabled`, `maps_enabled`, `loyverse_enabled` default false)
+- **All third-party flags OFF:** `paymongo_enabled`, `maps_enabled`, `email_enabled`, `loyverse_enabled` = false
 
-**Exit criteria:** A real customer can browse → order → pay GCash/cash → see live status. Admin sees orders. Loyverse/email/maps off (per §13.2).
+**Exit criteria:** A real customer can browse → order (cash) → see live status. Admin sees orders. Zero external integrations required.
 
-### Phase 2 — Admin Dashboard (Weeks 4–5)
+### Phase 2 — Admin Dashboard, Core (Weeks 4–5)
 - Realtime order kanban
 - Accept/Reject/Status transitions
 - Assign rider
-- Record payment (cash / GCash with reference)
+- Record payment (cash; manual GCash reference typed by staff as fallback)
 - Menu CRUD (categories, items, variations, modifiers, availability toggle)
 - Image upload (Supabase Storage)
 - Audit log view
 - Sales analytics (daily/weekly/monthly totals, top items)
 
-**Exit criteria:** Café can fully operate without us — accept orders, manage menu, view sales.
+**Exit criteria:** Café can fully operate without us — accept orders, manage menu, view sales — on cash.
 
-### Phase 3 — Loyverse Integration (Week 6)
-- Loyverse menu sync wizard (map items)
-- Receipt-on-accept push with idempotency
-- Retry cron
-- Sync status surfacing in admin order detail
-
-**Exit criteria:** Accepted orders appear as receipts in Loyverse within 30s, 99% of the time.
-
-### Phase 4 — Rider App (Week 7)
+### Phase 3 — Rider App, Core (Week 6)
 - Rider auth + role gate
 - Today's deliveries view
-- Delivery detail + Open in Google Maps deeplink
+- Delivery detail + **Open in Google Maps deeplink** (plain maps URL; no API key or billing)
 - Picked Up / Delivered transitions
-- Rider notification on assignment (email; SMS in Phase 5)
+- *(Rider assignment notification via email/SMS deferred to Phase 5 / Phase 6+)*
 
 **Exit criteria:** Rider can work the whole shift from their phone.
 
-### Phase 5 — Polish & Launch (Week 8)
+### Phase 4 — Core Polish & Hardening (Week 7)
 - Performance pass (Lighthouse ≥ 90 on mobile)
 - Accessibility audit (axe-core, manual screen reader pass)
-- Playwright E2E suite green
-- SEO (metadata, OpenGraph, sitemap, robots.txt)
+- Playwright E2E suite green (place-order cash → accept → deliver)
+- SEO (metadata, OpenGraph, sitemap, robots.txt) on the preview URL; production domain swapped in Phase 5
 - Load test (k6) — 50 RPS sustained on menu, 5 RPS on placeOrder
-- Soft launch with one staff member; daily standup with café for 2 weeks
-- Public launch
+- **Soft launch (cash-only)** with one staff member; daily standup with café for 2 weeks
+
+**Exit criteria:** The core system is production-quality and in daily café use on cash orders, with no external integrations.
+
+### Phase 5 — External Integrations & Public Launch (Weeks 8–9)
+All third-party app / external system integrations, consolidated here. Each one flips an existing feature flag; core behavior already works without it, so any single integration can slip without blocking the others or the live café.
+- **PayMongo** (GCash + Maya + cards): PaymentIntent/Source flow + webhook handler → flip `paymongo_enabled=true`. Cash path remains available.
+- **Loyverse POS:** menu sync wizard (map items), receipt-on-accept push with idempotency, retry cron, sync-status surfacing in admin order detail → flip `loyverse_enabled=true`.
+- **Google Maps Platform:** Places Autocomplete + map picker at checkout (swaps in over the fallback address form), precise distance for fee tiering, Static Maps on the tracking page → flip `maps_enabled=true`.
+- **Resend / email:** order confirmation, status updates, rider assignment notification → flip `email_enabled=true`.
+- **Domain + DNS:** acquire domain, point DNS, update SEO/OpenGraph to the production URL.
+- **Public launch** once integrations are verified end-to-end.
+
+**Exit criteria:** GCash/Maya/card payments live; accepted orders appear as Loyverse receipts within 30s, 99% of the time; map picker live; emails delivering; site on production domain.
 
 ### Phase 6+ — Future (post-launch)
-Customer accounts, saved addresses, favorites, order history, loyalty/stamps, GCash API, Maya, card payments via PayMongo/Xendit, SMS notifications via Semaphore, table QR ordering with prefilled table number, multi-branch.
+Customer accounts, saved addresses, favorites, order history, loyalty/stamps, **SMS notifications via Semaphore**, table QR ordering with prefilled table number, multi-branch.
 
 ---
 
@@ -969,8 +974,8 @@ Name + Description
 | | Fee model | **Distance-tiered from store coords** |
 | | | ₱30 ≤ 2 km · ₱40 ≤ 4 km · ₱50 ≤ 6 km · *(>6 km: cannot deliver, show error)* |
 | **Pickup** | Time selection | **Fixed 15-minute slots**, starting from `now + default_prep_eta_minutes`, through end-of-day. |
-| **Payments** | Phase 1 stack | **Cash + PayMongo** (PayMongo unlocks GCash, Maya, and cards in one integration) |
-| | Manual entry | Staff can still record a manual GCash ref as fallback (e.g., walk-in pays GCash to scan-and-pay sticker). |
+| **Payments** | Core stack | **Cash** (Phases 0–4). **PayMongo** (GCash, Maya, cards in one integration) added in **Phase 5** — see §11/§13.2. |
+| | Manual entry | Staff can record a manual GCash ref as fallback (e.g., walk-in pays GCash to scan-and-pay sticker) even before PayMongo is enabled. |
 | **Photography** | Rights | ✅ confirmed we can use the 60+ product PNGs. |
 | **About Us copy** | Approved | See §13.4 below — typeset verbatim. |
 
@@ -978,9 +983,12 @@ Name + Description
 
 Plan absorbed these as **flags in `app_settings`** so the rest of the build is unblocked. Each one has a "stub" implementation that does the safe thing when the flag is off.
 
+All four are wired in **Phase 5** (§11), after the core system is live on cash.
+
 | # | Item | Stub behavior while deferred | What's needed to flip on |
 |---|---|---|---|
 | 1 | **Domain name** | App runs on Vercel preview URL. SEO meta uses placeholder. | You pick + acquire a domain; we point DNS. |
+| 4 | **PayMongo (GCash/Maya/card)** | Checkout offers **cash only**; status `pending` → staff marks `paid` at counter. Staff can record a manual GCash reference in the dashboard as fallback. | Add PayMongo test/live keys + webhook secret to env → flip `paymongo_enabled=true` → non-cash methods appear at checkout. |
 | 5 | **Loyverse API token** | Accepting an order updates our DB only. `loyverse_sync` row created but not pushed. Admin sees "Loyverse: disabled" badge. | You issue an API token from Loyverse → I add to env → flip `loyverse_enabled=true`. |
 | 6 | **Resend / email** | Order confirmation page works (customer sees short code on screen + can bookmark `/order/<code>`). No emails sent. | Verify a sending domain in Resend → add API key → flip `email_enabled=true`. |
 | 7 | **Google Maps billing** | Delivery checkout uses a **plain address textarea + barangay select + landmark field** instead of map picker. We still store address text; lat/lng inferred from barangay centroid (good-enough for fee tiering — barangay-to-store distance is precomputed). | Enable GCP billing + provision Maps Platform key → flip `maps_enabled=true` → checkout swaps in the proper map picker. |
@@ -1008,8 +1016,8 @@ Founding year locked: **2021**.
 
 ### 13.5 Implications for the build (so you can hold me to this)
 
-- **Phase 1 ships PayMongo, not just manual GCash.** Slightly more wiring upfront, but no Phase-2 payment rework.
-- **Phase 1 does NOT block on Loyverse / Resend / Google Maps.** App is fully usable without them — orders work, just no POS sync, no email, fallback address form instead of map.
+- **Core phases (0–4) ship on cash only.** All third-party integrations — PayMongo, Loyverse, Resend, Google Maps — are deferred to **Phase 5**, so the café can go live on cash before any external service is wired. PayMongo is built once in Phase 5 (no later payment rework).
+- **No core phase blocks on an external integration.** The app is fully usable without them — orders work end to end, just no online payment, no POS sync, no email, and a fallback address form instead of the map picker.
 - **Delivery has a hard "out of zone" error** when distance > 6 km from store. Customer is gently bounced to Pickup with an apology + their cart preserved.
 - **Pickup slots regenerate per request** based on current time + remaining hours that day, so we never offer a slot in the past or after closing.
 - **Year placeholder `[YEAR]`** stays in the About copy until you confirm it.

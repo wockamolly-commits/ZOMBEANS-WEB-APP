@@ -95,13 +95,6 @@ export function CheckoutForm({
     return () => window.clearInterval(id);
   }, []);
 
-  // Drop a selected time once it slips into the past.
-  useEffect(() => {
-    if (pickupTime && !pickupSlots.some((slot) => slot.value === pickupTime)) {
-      setPickupTime(null);
-    }
-  }, [pickupSlots, pickupTime]);
-
   if (lines === null) return <div className="min-h-96" aria-label="Loading checkout" />;
 
   if (lines.length === 0) {
@@ -150,6 +143,12 @@ export function CheckoutForm({
   const subtotal = getCartSubtotal(lines);
   const deliveryFee = mode === "delivery" ? getDeliveryFeeCents(deliveryTier) : 0;
   const total = subtotal + deliveryFee;
+  // Treat an expired selection as empty without synchronously mutating state
+  // from an effect. The next explicit selection replaces the stale value.
+  const validPickupTime =
+    pickupTime && pickupSlots.some((slot) => slot.value === pickupTime)
+      ? pickupTime
+      : null;
 
   function reviewOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -177,7 +176,7 @@ export function CheckoutForm({
       notes: data.get("notes") ? String(data.get("notes")) : undefined,
       paymentMethod,
       lines,
-      pickupTime: mode === "pickup" ? pickupTime ?? undefined : undefined,
+      pickupTime: mode === "pickup" ? validPickupTime ?? undefined : undefined,
       delivery:
         mode === "delivery" && isLoggedIn
           ? (() => {
@@ -366,7 +365,7 @@ export function CheckoutForm({
                     items={pickupSlots}
                     name="pickupTime"
                     required
-                    value={pickupTime}
+                    value={validPickupTime}
                     onValueChange={(value) => setPickupTime(value)}
                   >
                     <Select.Trigger
