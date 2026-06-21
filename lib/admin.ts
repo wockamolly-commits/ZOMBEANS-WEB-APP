@@ -3,7 +3,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { safeNextPath } from "@/lib/safe-next";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type StaffRole = "admin" | "staff";
 export type TeamRole = StaffRole | "rider";
@@ -27,7 +27,7 @@ export async function getTeamProfileForUser(supabase: SupabaseClient, userId: st
   return data as TeamProfile | null;
 }
 export const getStaffProfile = cache(async (): Promise<StaffProfile | null> => {
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const profile = await getTeamProfileForUser(supabase, user.id);
@@ -35,9 +35,9 @@ export const getStaffProfile = cache(async (): Promise<StaffProfile | null> => {
   return { id: profile.id, role: profile.role, display_name: profile.display_name };
 });
 export async function requireStaff(returnTo = OPERATIONS_HOME): Promise<{ user: User; profile: StaffProfile }> {
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/login?next=${encodeURIComponent(returnTo)}`);
+  if (!user) redirect(`/admin/login?next=${encodeURIComponent(returnTo)}`);
   const profile = await getStaffProfile();
   if (!profile) redirect("/account");
   return { user, profile };

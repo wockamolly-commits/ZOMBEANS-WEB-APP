@@ -1,34 +1,47 @@
 import { createServerClient } from "@supabase/ssr";
+import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ADMIN_AUTH_COOKIE } from "@/lib/supabase/constants";
 
-// Refreshes the Supabase session and rewrites auth cookies onto the
-// response. Adapted from the @supabase/ssr SSR pattern for Next's Proxy.
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  const pendingCookies = new Map<
+    string,
+    { name: string; value: string; options: CookieOptions }
+  >();
+  const pendingHeaders = new Map<string, string>();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
+  function sessionClient(cookieName?: string) {
+    return createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        ...(cookieName ? { cookieOptions: { name: cookieName } } : {}),
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet, headers) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              pendingCookies.set(name, { name, value, options });
+            });
+            Object.entries(headers).forEach(([name, value]) => {
+              pendingHeaders.set(name, value);
+            });
+          },
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+      }
+    );
+  }
 
-  // Touching getUser() refreshes an expiring session and triggers setAll.
-  await supabase.auth.getUser();
+  const customer = sessionClient();
+  const admin = sessionClient(ADMIN_AUTH_COOKIE);
+  await Promise.all([customer.auth.getUser(), admin.auth.getUser()]);
 
+  const response = NextResponse.next({ request });
+  pendingCookies.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options);
+  });
+  pendingHeaders.forEach((value, name) => response.headers.set(name, value));
   return response;
 }

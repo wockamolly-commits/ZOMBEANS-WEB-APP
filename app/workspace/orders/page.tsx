@@ -1,5 +1,5 @@
 import { requireStaff } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import {
   OrderCard,
   type AdminOrder,
@@ -21,6 +21,7 @@ type Row = {
   notes: string | null;
   pickup_time: string | null;
   placed_at: string;
+  is_test: boolean;
   order_items: Array<{
     qty: number;
     item_name_snapshot: string;
@@ -51,13 +52,24 @@ function recentSinceISO(): string {
   return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
 }
 
-const COLUMNS: Array<{ key: OrderStatus; label: string }> = [
-  { key: "pending", label: "Pending" },
-  { key: "accepted", label: "Accepted" },
-  { key: "preparing", label: "Preparing" },
-  { key: "ready", label: "Ready" },
-  { key: "out_for_delivery", label: "Out for delivery" },
-  { key: "completed", label: "Completed" },
+const COLUMNS: Array<{
+  key: string;
+  label: string;
+  statuses: OrderStatus[];
+}> = [
+  { key: "pending", label: "New", statuses: ["pending"] },
+  {
+    key: "preparing",
+    label: "Preparing",
+    statuses: ["accepted", "preparing"],
+  },
+  { key: "ready", label: "Ready", statuses: ["ready"] },
+  {
+    key: "out_for_delivery",
+    label: "Out for delivery",
+    statuses: ["out_for_delivery"],
+  },
+  { key: "completed", label: "Completed", statuses: ["completed"] },
 ];
 
 function toOrder(
@@ -75,6 +87,7 @@ function toOrder(
     notes: row.notes,
     pickup_time: row.pickup_time,
     placed_at: row.placed_at,
+    is_test: row.is_test,
     items: (row.order_items ?? []).map((item) => ({
       qty: item.qty,
       name: item.item_name_snapshot,
@@ -89,7 +102,7 @@ function toOrder(
 
 export default async function AdminOrdersPage() {
   await requireStaff("/workspace/orders");
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
   const since = recentSinceISO();
 
   const [ordersResult, ridersResult] = await Promise.all([
@@ -97,7 +110,7 @@ export default async function AdminOrdersPage() {
       .from("orders")
       .select(
         `id, short_code, status, service_mode, customer_name, customer_phone,
-         total_cents, notes, pickup_time, placed_at,
+         total_cents, notes, pickup_time, placed_at, is_test,
          order_items ( qty, item_name_snapshot, variation_label_snapshot ),
          payments ( method, status )`
       )
@@ -180,9 +193,9 @@ export default async function AdminOrdersPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {COLUMNS.map((column) => {
-          const list = buckets[column.key];
+          const list = column.statuses.flatMap((status) => buckets[status]);
           return (
             <section key={column.key} className="min-w-0">
               <div className="mb-2 flex items-center justify-between">

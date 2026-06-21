@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getTeamProfileForUser } from "@/lib/admin";
 import { isStoreOpen } from "@/lib/checkout";
 import type { CartLine } from "@/lib/cart";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
+import { createClient } from "@/lib/supabase/server";
 
 export type PlaceOrderInput = {
   serviceMode: "dine_in" | "take_out" | "pickup" | "delivery";
@@ -11,11 +13,7 @@ export type PlaceOrderInput = {
   customerPhone?: string;
   customerEmail?: string;
   notes?: string;
-
-  // pickup only
-  pickupTime?: string; // ISO
-
-  // delivery only
+  pickupTime?: string;
   delivery?: {
     street: string;
     barangay?: string;
@@ -24,9 +22,8 @@ export type PlaceOrderInput = {
     deliveryNotes?: string;
     tier: "tier-2" | "tier-4" | "tier-6";
   };
-
   paymentMethod: "cash" | "gcash" | "maya" | "card";
-
+  isTestOrder?: boolean;
   lines: CartLine[];
 };
 
@@ -34,28 +31,46 @@ export type PlaceOrderResult =
   | { ok: false; error: string }
   | { ok: true; shortCode: string };
 
-export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
-  const supabase = await createClient();
+export async function placeOrder(
+  input: PlaceOrderInput
+): Promise<PlaceOrderResult> {
+  const adminSupabase = await createAdminSessionClient();
+  const {
+    data: { user: adminUser },
+  } = await adminSupabase.auth.getUser();
+  const operationsProfile = adminUser
+    ? await getTeamProfileForUser(adminSupabase, adminUser.id)
+    : null;
 
-  // The café only accepts orders during business hours. Enforce it here too so
-  // a customer can't slip an order through after the client-side gate closes
-  // (e.g. a stale tab left open past closing time).
-  if (!isStoreOpen()) {
+  const isSuperAdmin = operationsProfile?.role === "admin";
+  if (operationsProfile?.role === "staff") {
     return {
       ok: false,
-      error: "The café is closed right now, so we can't take this order. Please order during our operating hours.",
+      error:
+        "Staff accounts cannot place webstore orders. Please use a separate customer account for personal purchases.",
     };
   }
 
-  // Cash orders must be tied to an account for tracking and accountability,
-  // across every service mode. Enforce it here so a guest can't bypass the
-  // client-side gate by calling the action directly.
+  const isTestOrder = isSuperAdmin && input.isTestOrder === true;
+  const supabase = isSuperAdmin ? adminSupabase : await createClient();
+
+  if (!isStoreOpen() && !isTestOrder) {
+    return {
+      ok: false,
+      error:
+        "The café is closed right now, so we can't take this order. Please order during our operating hours.",
+    };
+  }
+
   if (input.paymentMethod === "cash") {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      return { ok: false, error: "Please sign in or create an account to pay with cash." };
+      return {
+        ok: false,
+        error: "Please sign in or create an account to pay with cash.",
+      };
     }
   }
 
@@ -85,17 +100,24 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     })),
   };
 
-  const { data, error } = await supabase.rpc("place_order", {
-    p_payload: payload,
-  });
+  const { data, error } = isSuperAdmin
+    ? await supabase.rpc("super_admin_place_order", {
+        p_payload: payload,
+        p_is_test: isTestOrder,
+      })
+    : await supabase.rpc("place_order", { p_payload: payload });
 
   if (error) {
-    const message =
-      error.message === "AUTH_REQUIRED"
-        ? "Please sign in to place a delivery order."
-        : error.message;
+    const message = {
+      AUTH_REQUIRED: "Please sign in to place a delivery order.",
+      STAFF_ORDERING_FORBIDDEN:
+        "Staff accounts cannot place webstore orders. Please use a separate customer account for personal purchases.",
+      SUPER_ADMIN_REQUIRED:
+        "Only the Super Admin can place an order from an operations account.",
+    }[error.message] ?? error.message;
     return { ok: false, error: message };
   }
+
   const shortCode = (data as { short_code?: string } | null)?.short_code;
   if (!shortCode) {
     return { ok: false, error: "Order placed but no short code returned." };

@@ -1,24 +1,9 @@
 ﻿import "server-only";
-import { createHash } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type InvitationRole = "admin" | "staff";
+export type InvitationRole = "staff";
 export type StaffInvitation = { id: string; email: string; display_name: string; role: InvitationRole; status: "pending" | "accepted" | "revoked"; expires_at: string; accepted_at: string | null; revoked_at: string | null; created_at: string; is_expired?: boolean };
-export type ManagedStaff = { id: string; email: string; display_name: string; role: InvitationRole; is_active: boolean; created_at: string };
-
-export function hashInvitationToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-export async function getInvitationByToken(token: string): Promise<StaffInvitation | null> {
-  const admin = createAdminClient();
-  const { data, error } = await admin.from("staff_invitations")
-    .select("id, email, display_name, role, status, expires_at, accepted_at, revoked_at, created_at")
-    .eq("token_hash", hashInvitationToken(token)).maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  return { ...(data as StaffInvitation), is_expired: new Date(data.expires_at).getTime() <= Date.now() };
-}
+export type ManagedStaff = { id: string; email: string; display_name: string; role: "admin" | "staff"; is_active: boolean; created_at: string };
 
 export async function getStaffManagementData(): Promise<{ staff: ManagedStaff[]; invitations: StaffInvitation[] }> {
   const admin = createAdminClient();

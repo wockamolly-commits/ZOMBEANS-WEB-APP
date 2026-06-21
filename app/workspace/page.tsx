@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { requireStaff } from "@/lib/admin";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
 import type { OrderStatus } from "@/app/workspace/orders/actions";
 
@@ -20,25 +20,28 @@ const ACTIVE: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delive
 
 export default async function AdminDashboard() {
   const { profile } = await requireStaff("/workspace");
-  const supabase = await createClient();
+  const supabase = await createAdminSessionClient();
 
   const { data } = await supabase
     .from("orders")
-    .select("status, total_cents, payments ( status )")
+    .select("status, total_cents, is_test, payments ( status )")
     .gte("placed_at", manilaTodayStartISO());
 
   const rows =
     (data as Array<{
       status: OrderStatus;
       total_cents: number;
+      is_test: boolean;
       payments: Array<{ status: string }> | null;
     }> | null) ?? [];
 
-  const total = rows.length;
-  const pending = rows.filter((r) => r.status === "pending").length;
-  const inKitchen = rows.filter((r) => ACTIVE.includes(r.status)).length;
-  const completed = rows.filter((r) => r.status === "completed").length;
-  const revenue = rows
+  const liveRows = rows.filter((row) => !row.is_test);
+  const testOrders = rows.length - liveRows.length;
+  const total = liveRows.length;
+  const pending = liveRows.filter((r) => r.status === "pending").length;
+  const inKitchen = liveRows.filter((r) => ACTIVE.includes(r.status)).length;
+  const completed = liveRows.filter((r) => r.status === "completed").length;
+  const revenue = liveRows
     .filter((r) => r.payments?.[0]?.status === "paid")
     .reduce((sum, r) => sum + r.total_cents, 0);
 
@@ -48,6 +51,7 @@ export default async function AdminDashboard() {
     { label: "In the kitchen", value: String(inKitchen) },
     { label: "Completed", value: String(completed) },
     { label: "Revenue (paid)", value: formatPeso(revenue) },
+    { label: "Test orders", value: String(testOrders) },
   ];
 
   return (
@@ -57,7 +61,7 @@ export default async function AdminDashboard() {
       </h1>
       <p className="text-sm text-zb-cream/55">Today at Zombeans</p>
 
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {cards.map((c) => (
           <div
             key={c.label}

@@ -1,11 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/safe-next";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
+import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const next = safeNextPath(searchParams.get("next"), "/");
-  const supabase = await createClient();
+  const adminScope = searchParams.get("scope") === "admin";
+  const next = safeNextPath(
+    searchParams.get("next"),
+    adminScope ? "/admin/login" : "/"
+  );
+  const supabase = adminScope
+    ? await createAdminSessionClient()
+    : await createClient();
   await supabase.auth.signOut();
   return NextResponse.redirect(new URL(next, request.url));
 }

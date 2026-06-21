@@ -13,6 +13,13 @@ export const KITCHEN_CLOSING_SOON_MINUTES = 15;
 
 const MANILA_TZ = "Asia/Manila";
 
+function isDevelopmentStoreOverrideEnabled(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.NEXT_PUBLIC_FORCE_STORE_OPEN === "true"
+  );
+}
+
 // A short, human-readable summary of the weekly schedule for display.
 export const STORE_HOURS_SUMMARY = [
   { days: "Mon–Fri", hours: "8:00 AM – 8:00 PM" },
@@ -50,6 +57,7 @@ function manilaNow(date: Date): { day: number; hour: number; minute: number } {
 // True while the café is within today's operating window (open inclusive,
 // close exclusive — e.g. ordering stops the moment the clock hits closing).
 export function isStoreOpen(date = new Date()): boolean {
+  if (isDevelopmentStoreOverrideEnabled()) return true;
   const { day, hour } = manilaNow(date);
   return hour >= STORE_OPEN_HOUR && hour < getCloseHour(day);
 }
@@ -58,6 +66,7 @@ export function isStoreOpen(date = new Date()): boolean {
 // currently open (before opening, or already closed). Minute-accurate, so it
 // can drive a live countdown near closing.
 export function minutesUntilClose(date = new Date()): number | null {
+  if (isDevelopmentStoreOverrideEnabled()) return null;
   const { day, hour, minute } = manilaNow(date);
   if (hour < STORE_OPEN_HOUR) return null;
   const remaining = getCloseHour(day) * 60 - (hour * 60 + minute);
@@ -102,10 +111,15 @@ export function generatePickupSlots(now = new Date()): PickupSlot[] {
     Math.ceil(first.getMinutes() / PICKUP_SLOT_MINUTES) * PICKUP_SLOT_MINUTES
   );
 
-  const close = new Date(now);
-  close.setHours(getCloseHour(now.getDay()), 0, 0, 0);
+  const overrideOpen = isDevelopmentStoreOverrideEnabled();
+  const close = overrideOpen
+    ? new Date(now.getTime() + 4 * 60 * 60 * 1000)
+    : new Date(now);
+  if (!overrideOpen) {
+    close.setHours(getCloseHour(now.getDay()), 0, 0, 0);
+  }
 
-  if (now.getHours() < STORE_OPEN_HOUR) {
+  if (!overrideOpen && now.getHours() < STORE_OPEN_HOUR) {
     const open = new Date(now);
     open.setHours(STORE_OPEN_HOUR, 0, 0, 0);
     first.setTime(open.getTime());

@@ -5,6 +5,7 @@ import { Check, Clock, Loader2, MapPin, Phone } from "lucide-react";
 import { formatPeso } from "@/lib/peso";
 import { RiderAssignmentControl } from "@/components/admin/RiderAssignmentControl";
 import {
+  advanceOrder,
   recordPayment,
   setOrderStatus,
   type ActionResult,
@@ -34,6 +35,7 @@ export type AdminOrder = {
   notes: string | null;
   pickup_time: string | null;
   placed_at: string;
+  is_test: boolean;
   items: Array<{ qty: number; name: string; variation: string }>;
   payment: { method: string; status: string } | null;
   assignment: RiderAssignment | null;
@@ -45,6 +47,35 @@ const SERVICE_LABEL: Record<AdminOrder["service_mode"], string> = {
   pickup: "Pickup",
   delivery: "Delivery",
 };
+
+function nextAction(order: AdminOrder) {
+  if (order.status === "pending" || order.status === "accepted") {
+    return { label: "Start preparing", disabled: false };
+  }
+  if (order.status === "preparing") {
+    return { label: "Mark ready", disabled: false };
+  }
+  if (order.status === "ready" && order.service_mode === "delivery") {
+    return { label: "Send out", disabled: !order.assignment };
+  }
+  if (order.status === "ready") {
+    return {
+      label: order.payment?.method === "cash" && order.payment.status !== "paid"
+        ? "Complete & mark paid"
+        : "Complete",
+      disabled: false,
+    };
+  }
+  if (order.status === "out_for_delivery") {
+    return {
+      label: order.payment?.method === "cash" && order.payment.status !== "paid"
+        ? "Delivered & mark paid"
+        : "Mark delivered",
+      disabled: false,
+    };
+  }
+  return null;
+}
 
 export function OrderCard({
   order,
@@ -68,6 +99,7 @@ export function OrderCard({
   }
 
   const paid = order.payment?.status === "paid";
+  const action = nextAction(order);
   const placed = new Date(order.placed_at).toLocaleTimeString("en-PH", {
     hour: "numeric",
     minute: "2-digit",
@@ -80,6 +112,11 @@ export function OrderCard({
           <p className="font-mono-tabular text-base font-bold text-zb-cream">
             {order.short_code}
           </p>
+          {order.is_test && (
+            <span className="mt-1 inline-flex rounded-full border border-zb-bone/45 bg-zb-bone/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zb-bone">
+              Test order
+            </span>
+          )}
           <p className="mt-0.5 flex items-center gap-1 text-xs text-zb-cream/55">
             <Clock className="size-3" /> {placed} · {SERVICE_LABEL[order.service_mode]}
           </p>
@@ -151,13 +188,6 @@ export function OrderCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {order.status === "pending" && !rejecting && (
           <>
-            <ActionBtn
-              primary
-              disabled={pending}
-              onClick={() => run(() => setOrderStatus(order.id, "accepted"))}
-            >
-              Accept
-            </ActionBtn>
             <ActionBtn disabled={pending} onClick={() => setRejecting(true)}>
               Reject
             </ActionBtn>
@@ -187,56 +217,19 @@ export function OrderCard({
             </div>
           </div>
         )}
-        {order.status === "accepted" && (
+        {action && !rejecting && (
           <ActionBtn
             primary
-            disabled={pending}
-            onClick={() => run(() => setOrderStatus(order.id, "preparing"))}
+            disabled={pending || action.disabled}
+            onClick={() => run(() => advanceOrder(order.id))}
           >
-            Start preparing
-          </ActionBtn>
-        )}
-        {order.status === "preparing" && (
-          <ActionBtn
-            primary
-            disabled={pending}
-            onClick={() => run(() => setOrderStatus(order.id, "ready"))}
-          >
-            Mark ready
-          </ActionBtn>
-        )}
-        {order.status === "ready" && order.service_mode === "delivery" && (
-          <ActionBtn
-            primary
-            disabled={pending || !order.assignment}
-            onClick={() =>
-              run(() => setOrderStatus(order.id, "out_for_delivery"))
-            }
-          >
-            Out for delivery
-          </ActionBtn>
-        )}
-        {order.status === "ready" && order.service_mode !== "delivery" && (
-          <ActionBtn
-            primary
-            disabled={pending}
-            onClick={() => run(() => setOrderStatus(order.id, "completed"))}
-          >
-            Complete
-          </ActionBtn>
-        )}
-        {order.status === "out_for_delivery" && (
-          <ActionBtn
-            primary
-            disabled={pending}
-            onClick={() => run(() => setOrderStatus(order.id, "completed"))}
-          >
-            Mark delivered
+            {action.label}
           </ActionBtn>
         )}
 
         {!paid &&
           order.payment &&
+          order.payment.method === "cash" &&
           order.status !== "rejected" &&
           order.status !== "cancelled" && (
             <ActionBtn

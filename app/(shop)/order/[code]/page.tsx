@@ -40,14 +40,6 @@ type OrderPayload = {
   }>;
 };
 
-const TIMELINE: Array<{ key: OrderPayload["status"]; label: string }> = [
-  { key: "pending", label: "Placed" },
-  { key: "accepted", label: "Accepted" },
-  { key: "preparing", label: "Preparing" },
-  { key: "ready", label: "Ready" },
-  { key: "completed", label: "Completed" },
-];
-
 const SERVICE_LABEL: Record<OrderPayload["service_mode"], string> = {
   dine_in: "Dine-in",
   take_out: "Take Out",
@@ -55,9 +47,27 @@ const SERVICE_LABEL: Record<OrderPayload["service_mode"], string> = {
   delivery: "Delivery",
 };
 
-function statusIndex(status: OrderPayload["status"]) {
-  if (status === "out_for_delivery") return TIMELINE.findIndex((s) => s.key === "ready");
-  return TIMELINE.findIndex((s) => s.key === status);
+function timelineFor(mode: OrderPayload["service_mode"]) {
+  const steps: Array<{ key: OrderPayload["status"]; label: string }> = [
+    { key: "pending", label: "Placed" },
+    { key: "preparing", label: "Preparing" },
+    { key: "ready", label: "Ready" },
+  ];
+  if (mode === "delivery") {
+    steps.push({ key: "out_for_delivery", label: "Out for delivery" });
+  }
+  steps.push({ key: "completed", label: "Completed" });
+  return steps;
+}
+
+function statusIndex(
+  status: OrderPayload["status"],
+  timeline: ReturnType<typeof timelineFor>
+) {
+  if (status === "accepted") {
+    return timeline.findIndex((step) => step.key === "preparing");
+  }
+  return timeline.findIndex((step) => step.key === status);
 }
 
 export async function generateMetadata({
@@ -81,7 +91,8 @@ export default async function OrderTrackingPage({
 
   if (error || !data) notFound();
   const order = data as OrderPayload;
-  const index = statusIndex(order.status);
+  const timeline = timelineFor(order.service_mode);
+  const index = statusIndex(order.status, timeline);
   const rejected = order.status === "rejected" || order.status === "cancelled";
   const terminal = order.status === "completed" || rejected;
 
@@ -137,7 +148,7 @@ export default async function OrderTrackingPage({
                 </div>
               ) : (
                 <ol className="mt-7 grid gap-3">
-                  {TIMELINE.map((step, i) => {
+                  {timeline.map((step, i) => {
                     const done = i <= index;
                     const current = i === index;
                     return (

@@ -10,8 +10,10 @@ import {
   Coffee,
   CreditCard,
   ChevronDown,
+  FlaskConical,
   LogIn,
   MapPin,
+  ShieldAlert,
   ShoppingBag,
   Store,
 } from "lucide-react";
@@ -54,11 +56,13 @@ export function CheckoutForm({
   email,
   profile,
   savedAddresses,
+  operationsRole,
 }: {
   isLoggedIn: boolean;
   email: string | null;
   profile: { display_name: string | null; phone: string | null };
   savedAddresses: SavedAddress[];
+  operationsRole: "admin" | "staff" | null;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
@@ -70,6 +74,7 @@ export function CheckoutForm({
   const [reviewed, setReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isTestOrder, setIsTestOrder] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
     generatePickupSlots()
@@ -95,6 +100,37 @@ export function CheckoutForm({
     return () => window.clearInterval(id);
   }, []);
 
+  if (operationsRole === "staff") {
+    return (
+      <div
+        role="alert"
+        className="mx-auto max-w-xl rounded-2xl border border-zb-bone/40 bg-zb-primary-strong/85 px-6 py-12 text-center"
+      >
+        <ShieldAlert className="mx-auto size-12 text-zb-bone" />
+        <h2 className="mt-5 font-display text-5xl">STAFF CHECKOUT RESTRICTED</h2>
+        <p className="mt-3 text-zb-cream/70">
+          Staff accounts are reserved for cafe operations and cannot place
+          webstore orders. For a personal purchase, sign out of the staff
+          account and use a separate customer account.
+        </p>
+        <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/workspace"
+            className="inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft"
+          >
+            Return to workspace
+          </Link>
+          <Link
+            href="/auth/signout?scope=admin&next=/login?next=/checkout"
+            className="inline-flex h-11 items-center rounded-xl border border-zb-bone/45 px-5 font-semibold text-zb-cream hover:bg-zb-bone/10"
+          >
+            Sign out and use customer account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (lines === null) return <div className="min-h-96" aria-label="Loading checkout" />;
 
   if (lines.length === 0) {
@@ -112,7 +148,7 @@ export function CheckoutForm({
 
   // Ordering is only available during business hours. This screen re-enables
   // itself automatically once the café opens (see the refresh interval above).
-  if (!storeOpen) {
+  if (!storeOpen && !isTestOrder) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <Clock3 className="mx-auto size-12 text-zb-bone" />
@@ -132,6 +168,16 @@ export function CheckoutForm({
         <Link href="/menu" className="mt-7 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft">
           Browse the menu
         </Link>
+        {operationsRole === "admin" && (
+          <button
+            type="button"
+            onClick={() => setIsTestOrder(true)}
+            className="ml-3 mt-7 inline-flex h-11 items-center gap-2 rounded-xl border border-zb-bone/45 px-5 font-semibold text-zb-cream"
+          >
+            <FlaskConical className="size-4" />
+            Create test order
+          </button>
+        )}
       </div>
     );
   }
@@ -173,8 +219,10 @@ export function CheckoutForm({
       customerPhone: data.get("customerPhone")
         ? String(data.get("customerPhone"))
         : undefined,
+      customerEmail: email ?? undefined,
       notes: data.get("notes") ? String(data.get("notes")) : undefined,
       paymentMethod,
+      isTestOrder,
       lines,
       pickupTime: mode === "pickup" ? validPickupTime ?? undefined : undefined,
       delivery:
@@ -239,12 +287,44 @@ export function CheckoutForm({
       <input type="hidden" name="serviceMode" value={mode} />
       <div className="space-y-7">
         <KitchenClosingBanner />
+        {operationsRole === "admin" && (
+          <div className="rounded-xl border border-zb-bone/40 bg-zb-bone/10 p-4">
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={isTestOrder}
+                onChange={(event) => {
+                  setIsTestOrder(event.target.checked);
+                  setReviewed(false);
+                }}
+                className="mt-1 accent-zb-bone"
+              />
+              <span>
+                <span className="flex items-center gap-2 font-semibold text-zb-bone">
+                  <FlaskConical className="size-4" />
+                  Test order
+                </span>
+                <span className="mt-1 block text-xs leading-5 text-zb-cream/65">
+                  Labels this order as a test and excludes it from store revenue
+                  metrics. Test orders may be submitted outside business hours.
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
         {isLoggedIn ? (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
             <span className="text-zb-cream/70">
               Signed in{email ? <> as <span className="font-medium text-zb-cream">{email}</span></> : ""}.
             </span>
-            <Link href="/auth/signout?next=/checkout" className="font-semibold text-zb-bone hover:underline">
+            <Link
+              href={
+                operationsRole
+                  ? "/auth/signout?scope=admin&next=/checkout"
+                  : "/auth/signout?next=/checkout"
+              }
+              className="font-semibold text-zb-bone hover:underline"
+            >
               Not you?
             </Link>
           </div>
@@ -612,7 +692,9 @@ export function CheckoutForm({
             <p className="flex items-center gap-2 font-semibold text-zb-bone"><Check className="size-4" /> Ready for submission</p>
             <p className="mt-2 text-xs leading-5 text-zb-cream/65">
               We&apos;ll send your order to the cafe and give you a tracking code.
-              Pay in cash at pickup or on delivery.
+              {isTestOrder
+                ? " This will be visibly marked as a test order."
+                : " Pay in cash at pickup or on delivery."}
             </p>
             {submitError && (
               <p className="mt-3 rounded-lg border border-zb-danger/40 bg-zb-danger/10 px-3 py-2 text-xs text-zb-cream">
