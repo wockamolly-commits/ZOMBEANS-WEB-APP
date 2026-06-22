@@ -278,3 +278,75 @@ with grp as (
 insert into item_modifiers (group_id, name, price_delta_cents)
 select grp.id, x.name, 0
 from grp, (values ('Cheese'), ('BBQ'), ('Garlic Mayo')) as x(name);
+
+-- Reusable option-group links imported from the existing Foodpanda setup.
+-- Groups and options are created by migration 0030 before this seed runs.
+insert into menu_item_option_groups (
+  item_id,
+  group_id,
+  is_required,
+  min_select,
+  max_select,
+  sort_order
+)
+select
+  item_row.id,
+  group_row.id,
+  false,
+  0,
+  case
+    when group_row.name = 'Choice of Extras for Drinks' then 6
+    else 1
+  end,
+  group_row.sort_order
+from menu_items item_row
+join menu_categories category_row on category_row.id = item_row.category_id
+cross join menu_option_groups group_row
+where category_row.slug in (
+  'signature-drinks',
+  'coffee',
+  'matcha',
+  'milk-series',
+  'creamcheese-series'
+)
+and group_row.name in (
+  'Choice of Milk Substitute',
+  'Choice of Extras for Drinks'
+)
+on conflict (item_id, group_id) do update
+set is_required = excluded.is_required,
+    min_select = excluded.min_select,
+    max_select = excluded.max_select,
+    sort_order = excluded.sort_order;
+
+insert into menu_item_option_groups (
+  item_id,
+  group_id,
+  is_required,
+  min_select,
+  max_select,
+  sort_order
+)
+select
+  item_row.id,
+  group_row.id,
+  false,
+  0,
+  1,
+  group_row.sort_order
+from (
+  values
+    ('Choice of Flavor for Flavored Americano', 'americano'),
+    ('Choice of Flavor for Chicken Fingers & Fries', 'chick-n-fries'),
+    ('Choice of Flavor for Fries', 'flavored-fries'),
+    ('Choice of Dip for Fries & Wedges', 'fries-wedges-with-dip'),
+    ('Choice of Wings and Wedges', 'wings-n-wedges'),
+    ('Choice of Meat for Nachos Overload', 'nachos-overload')
+) as mapping(group_name, item_slug)
+join menu_option_groups group_row on group_row.name = mapping.group_name
+join menu_items item_row on item_row.slug = mapping.item_slug
+on conflict (item_id, group_id) do update
+set is_required = excluded.is_required,
+    min_select = excluded.min_select,
+    max_select = excluded.max_select,
+    sort_order = excluded.sort_order;

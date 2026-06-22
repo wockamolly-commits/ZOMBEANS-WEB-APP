@@ -76,6 +76,23 @@ export function CartView() {
                 {line.name}
               </Link>
               <p className="mt-1 text-sm text-zb-cream/60">{line.variationLabel}</p>
+              {line.modifiers?.length ? (
+                <ul className="mt-1 space-y-0.5 text-xs text-zb-cream/45">
+                  {line.modifiers.map((modifier) => (
+                    <li key={modifier.id}>
+                      {modifier.name}
+                      {modifier.priceDeltaCents > 0
+                        ? ` (+${formatPeso(modifier.priceDeltaCents)})`
+                        : ""}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {line.itemNote ? (
+                <p className="mt-2 rounded-lg bg-zb-primary/55 px-2.5 py-2 text-xs italic text-zb-cream/55">
+                  “{line.itemNote}”
+                </p>
+              ) : null}
               <p className="mt-2 font-mono-tabular text-sm text-zb-bone">
                 {formatPeso(line.unitPriceCents)} each
               </p>

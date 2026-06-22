@@ -79,7 +79,17 @@ export async function placeOrder(
     customer_name: input.customerName.trim(),
     customer_phone: input.customerPhone?.trim() || null,
     customer_email: input.customerEmail?.trim() || null,
-    notes: input.notes?.trim() || null,
+    notes:
+      [
+        input.notes?.trim(),
+        ...input.lines.flatMap((line) =>
+          line.itemNote?.trim()
+            ? [`${line.quantity}x ${line.name}: ${line.itemNote.trim()}`]
+            : []
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n") || null,
     pickup_time: input.serviceMode === "pickup" ? input.pickupTime : null,
     delivery:
       input.serviceMode === "delivery" && input.delivery
@@ -97,6 +107,7 @@ export async function placeOrder(
       item_slug: line.itemSlug,
       variation_label: line.variationLabel,
       qty: line.quantity,
+      option_ids: (line.modifiers ?? []).map((modifier) => modifier.id),
     })),
   };
 

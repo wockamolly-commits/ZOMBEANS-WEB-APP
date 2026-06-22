@@ -37,6 +37,11 @@ type OrderPayload = {
     qty: number;
     unit_price_cents: number;
     line_total_cents: number;
+    options: Array<{
+      group: string;
+      name: string;
+      price_delta_cents: number;
+    }>;
   }>;
 };
 
@@ -195,6 +200,18 @@ export default async function OrderTrackingPage({
                         {line.qty}× {line.name}
                       </p>
                       <p className="text-xs text-zb-cream/55">{line.variation}</p>
+                      {line.options?.length ? (
+                        <ul className="mt-1 space-y-0.5 text-xs text-zb-cream/45">
+                          {line.options.map((option) => (
+                            <li key={`${option.group}-${option.name}`}>
+                              {option.name}
+                              {option.price_delta_cents > 0
+                                ? ` (+${formatPeso(option.price_delta_cents)})`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </div>
                     <p className="font-mono-tabular text-sm text-zb-cream/85">
                       {formatPeso(line.line_total_cents)}

@@ -26,6 +26,7 @@ type Row = {
     qty: number;
     item_name_snapshot: string;
     variation_label_snapshot: string;
+    order_item_options: Array<{ name_snapshot: string }> | null;
   }> | null;
   payments: Array<{ method: string; status: string }> | null;
 };
@@ -92,6 +93,9 @@ function toOrder(
       qty: item.qty,
       name: item.item_name_snapshot,
       variation: item.variation_label_snapshot,
+      options: (item.order_item_options ?? []).map(
+        (option) => option.name_snapshot
+      ),
     })),
     payment: row.payments?.[0]
       ? { method: row.payments[0].method, status: row.payments[0].status }
@@ -111,7 +115,12 @@ export default async function AdminOrdersPage() {
       .select(
         `id, short_code, status, service_mode, customer_name, customer_phone,
          total_cents, notes, pickup_time, placed_at, is_test,
-         order_items ( qty, item_name_snapshot, variation_label_snapshot ),
+         order_items (
+           qty,
+           item_name_snapshot,
+           variation_label_snapshot,
+           order_item_options ( name_snapshot )
+         ),
          payments ( method, status )`
       )
       .gte("placed_at", since)

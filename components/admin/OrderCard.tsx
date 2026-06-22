@@ -36,7 +36,12 @@ export type AdminOrder = {
   pickup_time: string | null;
   placed_at: string;
   is_test: boolean;
-  items: Array<{ qty: number; name: string; variation: string }>;
+  items: Array<{
+    qty: number;
+    name: string;
+    variation: string;
+    options: string[];
+  }>;
   payment: { method: string; status: string } | null;
   assignment: RiderAssignment | null;
 };
@@ -142,6 +147,11 @@ export function OrderCard({
           <li key={`${line.name}-${line.variation}-${index}`}>
             {line.qty}× {line.name}
             <span className="text-zb-cream/45"> · {line.variation}</span>
+            {line.options.length ? (
+              <span className="block pl-4 text-zb-cream/40">
+                {line.options.join(", ")}
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>

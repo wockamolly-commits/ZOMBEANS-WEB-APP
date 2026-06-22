@@ -132,3 +132,63 @@
   position: relative;
   z-index: 1;
 }
+
+/* Menu Studio: a subtle drafting-grid texture for the admin catalog workspace. */
+.menu-studio-bg {
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(229, 192, 123, 0.08), transparent 24rem),
+    linear-gradient(rgba(101, 132, 91, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(101, 132, 91, 0.055) 1px, transparent 1px);
+  background-size: auto, 36px 36px, 36px 36px;
+  background-position: center, center, center;
+}
+
+.menu-studio-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(229, 192, 123, 0.42) transparent;
+}
+
+.menu-studio-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.menu-studio-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.menu-studio-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(229, 192, 123, 0.42);
+}
+
+.menu-modal-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(229, 192, 123, 0.5) rgba(28, 45, 29, 0.65);
+}
+
+.menu-modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.menu-modal-scroll::-webkit-scrollbar-track {
+  background: rgba(28, 45, 29, 0.65);
+}
+
+.menu-modal-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(28, 45, 29, 0.65);
+  border-radius: 999px;
+  background: rgba(229, 192, 123, 0.5);
+}
+
+.menu-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(229, 192, 123, 0.75);
+}
+
+.recommendation-rail {
+  scrollbar-width: none;
+}
+
+.recommendation-rail::-webkit-scrollbar {
+  display: none;
+}

@@ -3,6 +3,7 @@ import {
   ClipboardList,
   ExternalLink,
   LayoutDashboard,
+  MenuSquare,
   UsersRound,
 } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
@@ -25,6 +26,7 @@ export default async function AdminLayout({
   const nav = isSuperAdmin(profile)
     ? [
         ...NAV,
+        { href: "/workspace/menu", label: "Menu", icon: MenuSquare },
         { href: "/workspace/team", label: "Team", icon: UsersRound },
       ]
     : NAV;

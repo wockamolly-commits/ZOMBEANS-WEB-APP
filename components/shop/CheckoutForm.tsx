@@ -672,7 +672,20 @@ export function CheckoutForm({
               <div className="relative aspect-square overflow-hidden rounded-lg bg-zb-cream/90">
                 <Image src={line.image} alt="" fill sizes="52px" className="object-contain p-1" />
               </div>
-              <div className="min-w-0"><p className="truncate text-sm font-medium">{line.quantity}x {line.name}</p><p className="truncate text-xs text-zb-cream/45">{line.variationLabel}</p></div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{line.quantity}x {line.name}</p>
+                <p className="truncate text-xs text-zb-cream/45">{line.variationLabel}</p>
+                {line.modifiers?.length ? (
+                  <p className="truncate text-[11px] text-zb-cream/35">
+                    {line.modifiers.map((modifier) => modifier.name).join(", ")}
+                  </p>
+                ) : null}
+                {line.itemNote ? (
+                  <p className="truncate text-[11px] italic text-zb-cream/35">
+                    “{line.itemNote}”
+                  </p>
+                ) : null}
+              </div>
               <span className="font-mono-tabular text-xs text-zb-cream/75">{formatPeso(line.unitPriceCents * line.quantity)}</span>
             </div>
           ))}

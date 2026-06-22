@@ -1,6 +1,13 @@
 export const CART_STORAGE_KEY = "zombeans-cart-v1";
 export const CART_UPDATED_EVENT = "zombeans-cart-updated";
 
+export type CartModifier = {
+  id: string;
+  groupName: string;
+  name: string;
+  priceDeltaCents: number;
+};
+
 export type CartLine = {
   id: string;
   itemSlug: string;
@@ -10,6 +17,8 @@ export type CartLine = {
   variationLabel: string;
   unitPriceCents: number;
   quantity: number;
+  modifiers?: CartModifier[];
+  itemNote?: string;
 };
 
 export function readCart(): CartLine[] {
