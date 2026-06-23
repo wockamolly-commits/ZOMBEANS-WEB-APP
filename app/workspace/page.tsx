@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { requireStaff } from "@/lib/admin";
+import { requireStaffPermission } from "@/lib/admin";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
 import type { OrderStatus } from "@/app/workspace/orders/actions";
@@ -19,7 +19,7 @@ function manilaTodayStartISO(): string {
 const ACTIVE: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery"];
 
 export default async function AdminDashboard() {
-  const { profile } = await requireStaff("/workspace");
+  const { profile } = await requireStaffPermission("dashboard:view", "/workspace");
   const supabase = await createAdminSessionClient();
 
   const { data } = await supabase

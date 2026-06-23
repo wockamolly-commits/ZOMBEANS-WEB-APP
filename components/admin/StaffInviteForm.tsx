@@ -6,6 +6,7 @@ import {
   inviteStaff,
   type TeamActionState,
 } from "@/app/workspace/team/actions";
+import { STAFF_ROLES, type StaffJobRole } from "@/lib/staff-roles";
 
 const initial: TeamActionState = { status: "idle" };
 
@@ -21,7 +22,8 @@ export function StaffInviteForm() {
         <div>
           <h2 className="font-display text-xl text-zb-cream">INVITE STAFF</h2>
           <p className="text-xs text-zb-cream/50">
-            Staff-only access. The one-time email link is valid for 48 hours.
+            Staff-only access. The invite is valid for 48 hours; sign-in uses a
+            6-digit email code.
           </p>
         </div>
       </div>
@@ -45,6 +47,45 @@ export function StaffInviteForm() {
           />
         </label>
       </div>
+      <fieldset className="mt-5">
+        <legend className="text-sm font-medium text-zb-cream/75">Role</legend>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          {(Object.entries(STAFF_ROLES) as Array<
+            [StaffJobRole, (typeof STAFF_ROLES)[StaffJobRole]]
+          >).map(([value, role]) => (
+            <label
+              key={value}
+              className={`rounded-xl border p-4 ${
+                role.available
+                  ? "cursor-pointer border-zb-sage/35 bg-zb-primary-dark/35 has-checked:border-zb-bone has-checked:bg-zb-bone/10"
+                  : "cursor-not-allowed border-zb-sage/15 bg-zb-primary-dark/20 opacity-55"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="role"
+                  value={value}
+                  defaultChecked={value === "cashier"}
+                  disabled={!role.available}
+                  className="accent-zb-bone"
+                />
+                <span className="font-semibold text-zb-cream">
+                  {role.label}
+                </span>
+                {!role.available && (
+                  <span className="ml-auto rounded-full bg-zb-cream/10 px-2 py-0.5 text-[10px] font-bold uppercase text-zb-cream/55">
+                    Coming soon
+                  </span>
+                )}
+              </span>
+              <span className="mt-2 block text-xs leading-5 text-zb-cream/50">
+                {role.description}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       {state.status !== "idle" && (
         <p
           role={state.status === "error" ? "alert" : "status"}

@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
 import { Logo } from "@/components/shared/Logo";
-import { isSuperAdmin, requireStaff } from "@/lib/admin";
+import { hasStaffPermission, requireStaff } from "@/lib/admin";
+import { STAFF_ROLES } from "@/lib/staff-roles";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,22 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { profile } = await requireStaff();
-  const nav = isSuperAdmin(profile)
-    ? [
-        ...NAV,
-        { href: "/workspace/menu", label: "Menu", icon: MenuSquare },
-        { href: "/workspace/team", label: "Team", icon: UsersRound },
-      ]
-    : NAV;
+  const nav = [
+    ...(hasStaffPermission(profile, "dashboard:view") ? [NAV[0]] : []),
+    ...(hasStaffPermission(profile, "orders:view") ? [NAV[1]] : []),
+    ...(hasStaffPermission(profile, "menu:manage")
+      ? [{ href: "/workspace/menu", label: "Menu", icon: MenuSquare }]
+      : []),
+    ...(hasStaffPermission(profile, "team:manage")
+      ? [{ href: "/workspace/team", label: "Team", icon: UsersRound }]
+      : []),
+  ];
+  const roleLabel =
+    profile.role === "admin"
+      ? "Super Admin"
+      : profile.staff_role
+        ? STAFF_ROLES[profile.staff_role].label
+        : "Staff";
 
   return (
     <div className="min-h-dvh bg-zb-primary text-zb-cream">
@@ -38,14 +48,14 @@ export default async function AdminLayout({
           <div className="flex items-center gap-4">
             <Logo href="/workspace" />
             <span className="hidden rounded-full border border-zb-bone/40 bg-zb-bone/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-zb-bone sm:inline">
-              Staff
+              {roleLabel}
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-zb-cream/65 sm:inline">
               {profile.display_name}
               <span className="ml-1 text-zb-cream/40">
-                ({profile.role === "admin" ? "super admin" : profile.role})
+                ({roleLabel.toLowerCase()})
               </span>
             </span>
             <AdminSignOut />

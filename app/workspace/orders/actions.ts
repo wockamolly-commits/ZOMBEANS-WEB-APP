@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getStaffProfile } from "@/lib/admin";
+import { getStaffProfile, hasStaffPermission } from "@/lib/admin";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type OrderStatus =
@@ -15,6 +15,10 @@ export type OrderStatus =
   | "cancelled";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+function forbidden(): ActionResult {
+  return { ok: false, error: "You don't have access to do that." };
+}
 
 function friendly(message: string | undefined): string {
   if (!message) return "Something went wrong. Try again.";
@@ -48,7 +52,8 @@ export async function setOrderStatus(
   reason?: string
 ): Promise<ActionResult> {
   const profile = await getStaffProfile();
-  if (!profile) return { ok: false, error: "You don't have access to do that." };
+  if (!profile || !hasStaffPermission(profile, "orders:manage"))
+    return forbidden();
 
   const supabase = await createAdminSessionClient();
   const { error } = await supabase.rpc("staff_set_order_status", {
@@ -71,7 +76,8 @@ export async function recordPayment(
   reference?: string
 ): Promise<ActionResult> {
   const profile = await getStaffProfile();
-  if (!profile) return { ok: false, error: "You don't have access to do that." };
+  if (!profile || !hasStaffPermission(profile, "orders:manage"))
+    return forbidden();
 
   const supabase = await createAdminSessionClient();
   const { error } = await supabase.rpc("staff_record_payment", {
@@ -93,7 +99,8 @@ export async function assignRider(
   riderProfileId: string | null
 ): Promise<ActionResult> {
   const profile = await getStaffProfile();
-  if (!profile) return { ok: false, error: "You don't have access to do that." };
+  if (!profile || !hasStaffPermission(profile, "orders:manage"))
+    return forbidden();
 
   const supabase = await createAdminSessionClient();
   const { error } = await supabase.rpc("staff_assign_rider", {
@@ -111,7 +118,8 @@ export async function assignRider(
 
 export async function advanceOrder(orderId: string): Promise<ActionResult> {
   const profile = await getStaffProfile();
-  if (!profile) return { ok: false, error: "You don't have access to do that." };
+  if (!profile || !hasStaffPermission(profile, "orders:manage"))
+    return forbidden();
 
   const supabase = await createAdminSessionClient();
   const { error } = await supabase.rpc("cashier_advance_order", {

@@ -1,4 +1,4 @@
-import { requireStaff } from "@/lib/admin";
+import { requireStaffPermission } from "@/lib/admin";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import {
   OrderCard,
@@ -105,7 +105,7 @@ function toOrder(
 }
 
 export default async function AdminOrdersPage() {
-  await requireStaff("/workspace/orders");
+  await requireStaffPermission("orders:view", "/workspace/orders");
   const supabase = await createAdminSessionClient();
   const since = recentSinceISO();
 

@@ -40,13 +40,17 @@ Open http://localhost:3000.
 
 ## Admin authentication
 
-- Customers sign in at `/login` with a Supabase email link.
-- The Super Admin and invited staff sign in at `/admin/login`.
+- Customers sign in at `/login` with a Supabase 6-digit email OTP.
+- The Super Admin and invited staff sign in at `/login`; authorized team
+  accounts are redirected to `/workspace` after OTP verification.
 - Set `SUPER_ADMIN_EMAIL` to the one primary Super Admin address.
 - Apply Supabase migration `0023_admin_magic_link_reset.sql` before using the
   redesigned flow.
 - The Super Admin invites staff from `/workspace/team`; invitations expire
-  after 48 hours and can only create `staff` accounts.
+  after 48 hours and can only create `staff` accounts. Configure the Supabase
+  Magic Link, Confirm sign up, and Invite user email templates to show
+  `{{ .Token }}` and remove `{{ .ConfirmationURL }}`. See
+  `docs/auth-otp-supabase-template.md`.
 - Customer and admin sessions use separate cookie namespaces. Admin routes
   also re-check the active database role on every request.
 - Staff may order normally, and the cashier may process any order from the live
