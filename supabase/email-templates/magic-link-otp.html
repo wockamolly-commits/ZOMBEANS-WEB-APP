@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="supported-color-schemes" content="dark light" />
+  <title>Your Zombeans sign-in code</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    /* Client resets */
+    body, table, td, p, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    a { color: #e5c07b; }
+
+    /* The OTP code stays legible if a client forces its own selection colors */
+    .otp-code::selection { background: #e5c07b; color: #1e2016; }
+
+    @media only screen and (max-width: 600px) {
+      .sm-full { width: 100% !important; }
+      .sm-px { padding-left: 24px !important; padding-right: 24px !important; }
+      .sm-otp { font-size: 38px !important; letter-spacing: 10px !important; }
+    }
+
+    /* Honor dark mode but keep our deep-green identity */
+    @media (prefers-color-scheme: light) {
+      .bg-canvas { background-color: #203222 !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#15170f; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;">
+  <!-- Preheader: shown in inbox preview, hidden in body -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#15170f; opacity:0;">
+    Your 6-digit Zombeans sign-in code is {{ .Token }} &mdash; it expires shortly. Do not share it with anyone.
+    &#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;&#8199;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#15170f;">
+    <tr>
+      <td align="center" style="padding: 32px 16px;">
+
+        <!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="sm-full bg-canvas" style="width:600px; max-width:600px; background-color:#203222; border:1px solid rgba(101,132,91,0.30); border-radius:20px; overflow:hidden;">
+
+          <!-- Brand bar -->
+          <tr>
+            <td style="background-color:#1e2016; padding:24px 40px; border-bottom:1px solid rgba(101,132,91,0.30);">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="left" valign="middle" width="56" style="width:56px;">
+                    <img src="{{ .SiteURL }}/images/brand/zombeans-logo.png" width="56" height="56" alt="ZOMBEANS" style="display:block; width:56px; height:56px; border:0; outline:none; text-decoration:none;" />
+                  </td>
+                  <td align="left" valign="middle" style="padding-left:16px;">
+                    <div style="font-family:'Segoe UI', Helvetica, Arial, sans-serif; font-size:20px; font-weight:800; letter-spacing:4px; text-transform:uppercase; color:#e5c07b; line-height:1.1;">
+                      ZOMBEANS
+                    </div>
+                    <div style="margin-top:4px; font-family:Helvetica, Arial, sans-serif; font-size:10px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:rgba(237,224,214,0.55); line-height:1.2;">
+                      Rise Up From The Dead
+                    </div>
+                  </td>
+                  <td align="right" valign="middle" style="font-family:Helvetica, Arial, sans-serif; font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(237,224,214,0.55);">
+                    Secure sign-in
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="sm-px" style="padding: 44px 40px 8px 40px;">
+              <h1 style="margin:0; font-family:'Segoe UI', Helvetica, Arial, sans-serif; font-size:26px; line-height:1.25; font-weight:800; color:#ede0d6; letter-spacing:0.3px;">
+                Here&rsquo;s your sign-in code
+              </h1>
+              <p style="margin:14px 0 0 0; font-size:15px; line-height:1.6; color:rgba(237,224,214,0.72);">
+                Enter the 6&#8209;digit code below to finish signing in to your Zombeans account.
+              </p>
+            </td>
+          </tr>
+
+          <!-- OTP ticket card -->
+          <tr>
+            <td class="sm-px" style="padding: 28px 40px 8px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#1c2d1d; border:1px solid rgba(229,192,123,0.45); border-radius:16px;">
+                <tr>
+                  <td align="center" style="padding: 28px 16px 30px 16px;">
+                    <div style="font-family:Helvetica, Arial, sans-serif; font-size:11px; font-weight:700; letter-spacing:3px; text-transform:uppercase; color:#e5c07b;">
+                      Your verification code
+                    </div>
+                    <div class="otp-code sm-otp" style="margin-top:14px; font-family:'SFMono-Regular', Menlo, Consolas, 'Courier New', monospace; font-size:46px; line-height:1; font-weight:700; letter-spacing:14px; color:#f1d59b; text-indent:14px;">
+                      {{ .Token }}
+                    </div>
+                    <div style="margin-top:16px; font-family:Helvetica, Arial, sans-serif; font-size:12px; font-weight:600; letter-spacing:1px; color:rgba(237,224,214,0.55);">
+                      Expires shortly &mdash; request a new code if it lapses
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Security note -->
+          <tr>
+            <td class="sm-px" style="padding: 20px 40px 8px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:rgba(229,192,123,0.08); border:1px solid rgba(229,192,123,0.28); border-radius:12px;">
+                <tr>
+                  <td style="padding: 14px 18px; font-size:13px; line-height:1.55; color:rgba(237,224,214,0.82);">
+                    <strong style="color:#e5c07b;">Do not share this code.</strong>
+                    We will never ask you for it by phone, email, or chat. If you didn&rsquo;t try to sign in, you can safely ignore this email &mdash; your account stays protected.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Sent-to line -->
+          <tr>
+            <td class="sm-px" style="padding: 22px 40px 40px 40px;">
+              <p style="margin:0; font-size:12px; line-height:1.6; color:rgba(237,224,214,0.48);">
+                This code only works for this one sign-in and can&rsquo;t be reused.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#1e2016; padding: 24px 40px; border-top:1px solid rgba(101,132,91,0.30);">
+              <p style="margin:0 0 8px 0; font-family:'Segoe UI', Helvetica, Arial, sans-serif; font-size:11px; font-weight:800; line-height:1.4; letter-spacing:2px; text-transform:uppercase; color:#e5c07b;">
+                ZOMBEANS &mdash; Rise Up From The Dead
+              </p>
+              <p style="margin:0; font-family:Helvetica, Arial, sans-serif; font-size:11px; line-height:1.6; letter-spacing:0.4px; color:rgba(237,224,214,0.45);">
+                You received this email because a sign-in code was requested for your account.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
