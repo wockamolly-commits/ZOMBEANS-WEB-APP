@@ -280,7 +280,7 @@ export function LoginForm() {
         {loginPending ? "Sending code..." : "Email me a 6-digit code"}
       </button>
       <p className="text-center text-xs leading-5 text-zb-cream/55">
-        Customers and team members use the same secure email code flow.
+        No password needed. We&apos;ll verify your email with a one-time code.
       </p>
     </form>
   );
