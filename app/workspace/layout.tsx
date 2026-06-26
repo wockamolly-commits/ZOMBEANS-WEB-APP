@@ -28,7 +28,7 @@ export default async function AdminLayout({
   const nav = [
     ...(hasStaffPermission(profile, "dashboard:view") ? [NAV[0]] : []),
     ...(hasStaffPermission(profile, "orders:view") ? [NAV[1]] : []),
-    ...(hasStaffPermission(profile, "menu:manage")
+    ...(hasStaffPermission(profile, "menu:view")
       ? [{ href: "/workspace/menu", label: "Menu", icon: MenuSquare }]
       : []),
     ...(hasStaffPermission(profile, "team:manage")
