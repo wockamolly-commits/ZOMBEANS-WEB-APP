@@ -1068,7 +1068,13 @@ function LinkProductsForm({
   );
 }
 
-export function MenuManager({ initialData }: { initialData: MenuManagementData }) {
+export function MenuManager({
+  initialData,
+  can,
+}: {
+  initialData: MenuManagementData;
+  can: { configure: boolean; availability: boolean };
+}) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("products");
   const [query, setQuery] = useState("");
@@ -1268,15 +1274,17 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                   : "Select a set to manage choices and product links."}
               </p>
             </div>
-            <button
-              onClick={() =>
-                setModal(tab === "products" ? { kind: "category" } : { kind: "group" })
-              }
-              className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 py-3 text-sm font-bold text-zb-primary-dark shadow-lg transition hover:bg-zb-bone-soft"
-            >
-              <Plus className="size-4" />
-              Add {tab === "products" ? "category" : "option group"}
-            </button>
+            {can.configure && (
+              <button
+                onClick={() =>
+                  setModal(tab === "products" ? { kind: "category" } : { kind: "group" })
+                }
+                className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 py-3 text-sm font-bold text-zb-primary-dark shadow-lg transition hover:bg-zb-bone-soft"
+              >
+                <Plus className="size-4" />
+                Add {tab === "products" ? "category" : "option group"}
+              </button>
+            )}
             <div className="menu-studio-scroll max-h-[min(56dvh,34rem)] space-y-2 overflow-y-auto pr-1">
               {(tab === "products" ? filteredCategories : filteredGroups).map(
                 (entry) => {
@@ -1344,18 +1352,20 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                           <h2 className="truncate font-display text-3xl">
                             {selectedCategory.name}
                           </h2>
-                          <button
-                            onClick={() =>
-                              setModal({
-                                kind: "category",
-                                category: selectedCategory,
-                              })
-                            }
-                            className="grid size-9 place-items-center rounded-xl border border-zb-primary/15 bg-zb-cream/60 text-zb-primary/55 transition hover:border-zb-primary/35 hover:text-zb-primary"
-                            aria-label="Edit category"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
+                          {can.configure && (
+                            <button
+                              onClick={() =>
+                                setModal({
+                                  kind: "category",
+                                  category: selectedCategory,
+                                })
+                              }
+                              className="grid size-9 place-items-center rounded-xl border border-zb-primary/15 bg-zb-cream/60 text-zb-primary/55 transition hover:border-zb-primary/35 hover:text-zb-primary"
+                              aria-label="Edit category"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          )}
                         </div>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-[0.08em] text-zb-primary/45">
                           {selectedCategory.items.length} products ·{" "}
@@ -1363,17 +1373,19 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() =>
-                        setModal({
-                          kind: "product",
-                          categoryId: selectedCategory.id,
-                        })
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-zb-primary px-4 py-3 text-sm font-bold text-zb-cream shadow-lg transition hover:bg-zb-primary-strong"
-                    >
-                      <Plus className="size-4" /> Add product
-                    </button>
+                    {can.configure && (
+                      <button
+                        onClick={() =>
+                          setModal({
+                            kind: "product",
+                            categoryId: selectedCategory.id,
+                          })
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-zb-primary px-4 py-3 text-sm font-bold text-zb-cream shadow-lg transition hover:bg-zb-primary-strong"
+                      >
+                        <Plus className="size-4" /> Add product
+                      </button>
+                    )}
                   </header>
                   {visibleItems.length ? (
                     <div className="space-y-3 p-3 sm:p-4">
@@ -1382,27 +1394,26 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                         return (
                           <article
                             key={item.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-label={`Edit ${item.name}`}
-                            onClick={() =>
-                              setModal({
-                                kind: "product",
-                                item,
-                                categoryId: item.category_id,
-                              })
-                            }
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter" || event.key === " ") {
-                                event.preventDefault();
-                                setModal({
-                                  kind: "product",
-                                  item,
-                                  categoryId: item.category_id,
-                                });
-                              }
-                            }}
-                            className="group cursor-pointer overflow-hidden rounded-2xl border border-zb-primary/10 bg-[#f7eee6] shadow-sm transition hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone"
+                            {...(can.configure
+                              ? {
+                                  role: "button" as const,
+                                  tabIndex: 0,
+                                  "aria-label": `Edit ${item.name}`,
+                                  onClick: () =>
+                                    setModal({ kind: "product", item, categoryId: item.category_id }),
+                                  onKeyDown: (event: React.KeyboardEvent) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      setModal({ kind: "product", item, categoryId: item.category_id });
+                                    }
+                                  },
+                                }
+                              : {})}
+                            className={`group overflow-hidden rounded-2xl border border-zb-primary/10 bg-[#f7eee6] shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone ${
+                              can.configure
+                                ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md"
+                                : ""
+                            }`}
                           >
                             <div className="flex gap-4 p-4 sm:p-5">
                               <div
@@ -1434,9 +1445,11 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                                           {getAvailabilityStatus(item)}
                                         </span>
                                       )}
-                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
-                                        <Pencil className="size-3" /> Edit product
-                                      </span>
+                                      {can.configure && (
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
+                                          <Pencil className="size-3" /> Edit product
+                                        </span>
+                                      )}
                                     </span>
                                   </div>
                                   <div
@@ -1445,7 +1458,7 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                                   >
                                     <Toggle
                                       checked={item.is_active}
-                                      disabled={pendingId === item.id}
+                                      disabled={pendingId === item.id || !can.availability}
                                       label={`${item.is_active ? "Disable" : "Enable"} ${item.name}`}
                                       onChange={(active) => toggleItem(item, active)}
                                     />
@@ -1490,24 +1503,26 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                                             </span>
                                           )}
                                         </p>
-                                        <button
-                                          onClick={(event) => {
-                                            event.stopPropagation();
-                                            setModal({
-                                              kind: "product",
-                                              item,
-                                              categoryId: item.category_id,
-                                            })
-                                          }}
-                                          className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-zb-primary/15 bg-zb-cream px-3 py-1.5 text-xs font-bold transition hover:bg-zb-bone/25"
-                                        >
-                                          View options
-                                          {linkedCount > 0 && (
-                                            <span className="rounded-full bg-zb-bone/30 px-1.5">
-                                              {linkedCount}
-                                            </span>
-                                          )}
-                                        </button>
+                                        {can.configure && (
+                                          <button
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setModal({
+                                                kind: "product",
+                                                item,
+                                                categoryId: item.category_id,
+                                              })
+                                            }}
+                                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-zb-primary/15 bg-zb-cream px-3 py-1.5 text-xs font-bold transition hover:bg-zb-bone/25"
+                                          >
+                                            View options
+                                            {linkedCount > 0 && (
+                                              <span className="rounded-full bg-zb-bone/30 px-1.5">
+                                                {linkedCount}
+                                              </span>
+                                            )}
+                                          </button>
+                                        )}
                                       </div>
                                       <span className="font-mono-tabular font-bold">
                                         {peso(variation.price_cents)}
@@ -1545,28 +1560,32 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                     <div>
                       <div className="flex items-center gap-2">
                         <h2 className="font-display text-3xl">{selectedGroup.name}</h2>
-                        <button
-                          onClick={() =>
-                            setModal({ kind: "group", group: selectedGroup })
-                          }
-                          className="grid size-9 place-items-center rounded-xl border border-zb-primary/15 bg-zb-cream/60 text-zb-primary/55 transition hover:border-zb-primary/35 hover:text-zb-primary"
-                          aria-label="Edit option group"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
+                        {can.configure && (
+                          <button
+                            onClick={() =>
+                              setModal({ kind: "group", group: selectedGroup })
+                            }
+                            className="grid size-9 place-items-center rounded-xl border border-zb-primary/15 bg-zb-cream/60 text-zb-primary/55 transition hover:border-zb-primary/35 hover:text-zb-primary"
+                            aria-label="Edit option group"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        )}
                       </div>
                       <p className="mt-1 max-w-2xl text-sm text-zb-primary/50">
                         {selectedGroup.description || "Reusable product modifier group."}
                       </p>
                     </div>
-                    <button
-                      onClick={() =>
-                        setModal({ kind: "option", groupId: selectedGroup.id })
-                      }
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-zb-primary px-4 py-3 text-sm font-bold text-zb-cream shadow-lg"
-                    >
-                      <Plus className="size-4" /> Add option
-                    </button>
+                    {can.configure && (
+                      <button
+                        onClick={() =>
+                          setModal({ kind: "option", groupId: selectedGroup.id })
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-zb-primary px-4 py-3 text-sm font-bold text-zb-cream shadow-lg"
+                      >
+                        <Plus className="size-4" /> Add option
+                      </button>
+                    )}
                   </div>
                   <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-zb-primary/10 bg-zb-cream/65 p-4 sm:flex-row sm:items-center">
                     <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-zb-sage/10 text-zb-primary">
@@ -1579,14 +1598,16 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                           }`
                         : "Not linked to any products yet"}
                     </p>
-                    <button
-                      onClick={() =>
-                        setModal({ kind: "links", group: selectedGroup })
-                      }
-                      className="rounded-lg bg-zb-bone/35 px-3 py-2 text-xs font-bold text-zb-primary"
-                    >
-                      Link products
-                    </button>
+                    {can.configure && (
+                      <button
+                        onClick={() =>
+                          setModal({ kind: "links", group: selectedGroup })
+                        }
+                        className="rounded-lg bg-zb-bone/35 px-3 py-2 text-xs font-bold text-zb-primary"
+                      >
+                        Link products
+                      </button>
+                    )}
                   </div>
                 </header>
                 {visibleOptions.length ? (
@@ -1594,27 +1615,34 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                     {visibleOptions.map((option) => (
                     <div
                       key={option.id}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Edit ${option.name}`}
-                      onClick={() =>
-                        setModal({
-                          kind: "option",
-                          groupId: selectedGroup.id,
-                          option,
-                        })
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setModal({
-                            kind: "option",
-                            groupId: selectedGroup.id,
-                            option,
-                          });
-                        }
-                      }}
-                      className="group flex cursor-pointer items-center gap-4 rounded-2xl border border-zb-primary/10 bg-[#f7eee6] p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone"
+                      {...(can.configure
+                        ? {
+                            role: "button" as const,
+                            tabIndex: 0,
+                            "aria-label": `Edit ${option.name}`,
+                            onClick: () =>
+                              setModal({
+                                kind: "option",
+                                groupId: selectedGroup.id,
+                                option,
+                              }),
+                            onKeyDown: (event: React.KeyboardEvent) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setModal({
+                                  kind: "option",
+                                  groupId: selectedGroup.id,
+                                  option,
+                                });
+                              }
+                            },
+                          }
+                        : {})}
+                      className={`group flex items-center gap-4 rounded-2xl border border-zb-primary/10 bg-[#f7eee6] p-4 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone ${
+                        can.configure
+                          ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md"
+                          : ""
+                      }`}
                     >
                       <div className="min-w-0 flex-1 text-left">
                         <span className="block truncate font-bold">{option.name}</span>
@@ -1623,9 +1651,11 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                             ? `+${peso(option.price_delta_cents)}`
                             : "No price adjustment"}
                         </span>
-                        <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
-                          <Pencil className="size-3" /> Edit option
-                        </span>
+                        {can.configure && (
+                          <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
+                            <Pencil className="size-3" /> Edit option
+                          </span>
+                        )}
                       </div>
                       <span className="hidden font-mono-tabular text-sm font-bold text-zb-primary/60 sm:block">
                         +{peso(option.price_delta_cents)}
@@ -1636,7 +1666,7 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                       >
                         <Toggle
                           checked={option.is_active}
-                          disabled={pendingId === option.id}
+                          disabled={pendingId === option.id || !can.availability}
                           label={`${option.is_active ? "Disable" : "Enable"} ${option.name}`}
                           onChange={(active) => toggleOption(option, active)}
                         />
