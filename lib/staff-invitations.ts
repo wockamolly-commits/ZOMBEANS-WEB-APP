@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { StaffJobRole } from "@/lib/staff-roles";
+import type { PermissionOverride, StaffJobRole } from "@/lib/staff-roles";
+import { isStaffPermission } from "@/lib/staff-roles";
 
 export type StaffInvitation = {
   id: string;
@@ -25,6 +26,7 @@ export type ManagedStaff = {
   staff_role: StaffJobRole | null;
   is_active: boolean;
   created_at: string;
+  permission_overrides: PermissionOverride[];
 };
 
 type ManagedStaffRow = Omit<ManagedStaff, "email"> & {
@@ -76,6 +78,19 @@ export async function getStaffManagementData(): Promise<{
       .filter((user) => !user.deleted_at)
       .map((user) => [user.id, user.email ?? "Unknown email"])
   );
+  const overridesResult = await admin
+    .from("staff_permission_overrides")
+    .select("profile_id, permission, granted");
+  if (overridesResult.error) throw overridesResult.error;
+
+  const overridesByProfile = new Map<string, PermissionOverride[]>();
+  for (const row of overridesResult.data ?? []) {
+    if (!isStaffPermission(row.permission)) continue;
+    const list = overridesByProfile.get(row.profile_id) ?? [];
+    list.push({ permission: row.permission, granted: Boolean(row.granted) });
+    overridesByProfile.set(row.profile_id, list);
+  }
+
   return {
     staff: ((profilesResult.data ?? []) as ManagedStaffRow[])
       .filter((profile) => activeUsersById.has(profile.id))
@@ -83,6 +98,7 @@ export async function getStaffManagementData(): Promise<{
         ...profile,
         full_name: profile.full_name ?? null,
         email: activeUsersById.get(profile.id) ?? "Unknown email",
+        permission_overrides: overridesByProfile.get(profile.id) ?? [],
       })),
     invitations: ((invitationsResult.data ?? []) as StaffInvitation[]).map(
       (invite) => ({

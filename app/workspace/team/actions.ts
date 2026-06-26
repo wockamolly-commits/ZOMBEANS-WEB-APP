@@ -7,8 +7,10 @@ import * as z from "zod";
 import { requireSuperAdmin } from "@/lib/admin";
 import { isConfiguredSuperAdminEmail } from "@/lib/admin-auth";
 import {
+  GRANTABLE_PERMISSIONS,
   isStaffJobRole,
   isStaffRoleAvailable,
+  roleDefaultPermissions,
   STAFF_ROLES,
 } from "@/lib/staff-roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -346,4 +348,103 @@ export async function revokeStaffAccess(
   revalidatePath("/workspace/team");
   refresh();
   return { status: "success", message: "Team member access revoked." };
+}
+
+export async function updateStaffPermissions(
+  _previous: TeamActionState,
+  formData: FormData
+): Promise<TeamActionState> {
+  const { profile: actor } = await requireSuperAdmin("/workspace/team");
+  const targetId = idSchema.safeParse(formData.get("profileId"));
+  if (!targetId.success || targetId.data === actor.id) {
+    return { status: "error", message: "That team member could not be found." };
+  }
+
+  const admin = createAdminClient();
+  const target = await admin
+    .from("profiles")
+    .select("id, role, staff_role, is_active")
+    .eq("id", targetId.data)
+    .maybeSingle();
+  if (target.error) {
+    console.error("[team] permission target lookup failed:", target.error.message);
+    return { status: "error", message: "Could not load that team member." };
+  }
+  if (!target.data || !target.data.is_active) {
+    return { status: "error", message: "That team member could not be found." };
+  }
+  if (target.data.role === "admin") {
+    return {
+      status: "error",
+      message: "Super Admin permissions cannot be edited here.",
+    };
+  }
+
+  const defaults = new Set(
+    roleDefaultPermissions(
+      isStaffJobRole(target.data.staff_role) ? target.data.staff_role : null
+    )
+  );
+
+  const toUpsert: {
+    profile_id: string;
+    permission: string;
+    granted: boolean;
+    updated_by: string;
+    updated_at: string;
+  }[] = [];
+  const toClear: string[] = [];
+  const now = new Date().toISOString();
+  const effective: Record<string, boolean> = {};
+
+  for (const entry of GRANTABLE_PERMISSIONS) {
+    const desired = formData.get(`perm:${entry.permission}`) === "on";
+    effective[entry.permission] = desired;
+    const isDefault = defaults.has(entry.permission);
+    if (desired === isDefault) {
+      toClear.push(entry.permission);
+    } else {
+      toUpsert.push({
+        profile_id: targetId.data,
+        permission: entry.permission,
+        granted: desired,
+        updated_by: actor.id,
+        updated_at: now,
+      });
+    }
+  }
+
+  if (toClear.length) {
+    const cleared = await admin
+      .from("staff_permission_overrides")
+      .delete()
+      .eq("profile_id", targetId.data)
+      .in("permission", toClear);
+    if (cleared.error) {
+      console.error("[team] permission clear failed:", cleared.error.message);
+      return { status: "error", message: "Could not update permissions." };
+    }
+  }
+
+  if (toUpsert.length) {
+    const upserted = await admin
+      .from("staff_permission_overrides")
+      .upsert(toUpsert, { onConflict: "profile_id,permission" });
+    if (upserted.error) {
+      console.error("[team] permission upsert failed:", upserted.error.message);
+      return { status: "error", message: "Could not update permissions." };
+    }
+  }
+
+  await admin.from("audit_logs").insert({
+    actor_profile_id: actor.id,
+    action: "staff_permissions.updated",
+    target_table: "profiles",
+    target_id: targetId.data,
+    diff: { permissions: effective },
+  });
+
+  revalidatePath("/workspace", "layout");
+  revalidatePath("/workspace/team");
+  return { status: "success", message: "Permissions updated." };
 }
