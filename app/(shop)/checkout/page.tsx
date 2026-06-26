@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   const operationsProfile = await getStaffProfile();
+  const user = await getCurrentUser();
   const adminSupabase = operationsProfile
     ? await createAdminSessionClient()
     : null;
@@ -19,19 +20,15 @@ export default async function CheckoutPage() {
   } = adminSupabase
     ? await adminSupabase.auth.getUser()
     : { data: { user: null } };
-  const user = operationsProfile ? null : await getCurrentUser();
   const profile =
-    operationsProfile
-      ? { display_name: operationsProfile.display_name, phone: null }
-      : user
-        ? await getCustomerProfile()
+    user
+      ? await getCustomerProfile()
+      : operationsProfile
+        ? { display_name: operationsProfile.display_name, phone: null }
         : null;
   const savedAddresses = user ? await getSavedAddresses() : [];
   const isLoggedIn = Boolean(user || operationsProfile);
-  const email =
-    operationsProfile
-      ? operationsUser?.email ?? null
-      : user?.email ?? null;
+  const email = user?.email ?? (operationsProfile ? operationsUser?.email ?? null : null);
 
   return (
     <>
@@ -48,7 +45,7 @@ export default async function CheckoutPage() {
             email={email}
             profile={profile ?? { display_name: null, phone: null }}
             savedAddresses={savedAddresses}
-            operationsRole={operationsProfile?.role ?? null}
+            operationsRole={user ? null : operationsProfile?.role ?? null}
           />
         </main>
       </DoodleBg>

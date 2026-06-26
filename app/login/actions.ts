@@ -11,6 +11,7 @@ import {
   type AuthFlow,
 } from "@/lib/auth-destination";
 import {
+  hasPendingStaffInvitation,
   resolveAdminEmailAccess,
   type AdminEmailAccess,
 } from "@/lib/admin-auth";
@@ -51,6 +52,7 @@ const verifyBuckets = new Map<string, RateBucket>();
 
 const requestSchema = z.object({
   email: z.email({ error: "Enter a valid email address." }).trim().toLowerCase(),
+  invitationId: z.uuid().optional(),
   next: z.string().max(200).optional(),
 });
 
@@ -155,6 +157,7 @@ export async function requestOtp(
 ): Promise<LoginState> {
   const parsed = requestSchema.safeParse({
     email: formData.get("email"),
+    invitationId: formData.get("invitationId") || undefined,
     next: formData.get("next"),
   });
   if (!parsed.success) {
@@ -166,9 +169,9 @@ export async function requestOtp(
     };
   }
 
-  const { email } = parsed.data;
+  const { email, invitationId } = parsed.data;
   const ip = await clientIp();
-  const rateKey = hashKey(["otp-request", email, ip]);
+  const rateKey = hashKey(["otp-request", email, invitationId, ip]);
   const now = Date.now();
   const rate = consumeRequestSlot(rateKey, now);
   if (!rate.allowed) {
@@ -193,6 +196,42 @@ export async function requestOtp(
       messageTone: "error",
       email,
     };
+  }
+
+  if (access === "invited") {
+    if (!invitationId) {
+      return {
+        ...previous,
+        status: previous.status === "sent" ? "sent" : "error",
+        message: "Open the staff invitation link first to request a code.",
+        messageTone: "error",
+        email,
+      };
+    }
+
+    let validInvitation = false;
+    try {
+      validInvitation = await hasPendingStaffInvitation(email, invitationId);
+    } catch (error) {
+      console.error("[login] staff invitation check failed:", error);
+      return {
+        ...previous,
+        status: previous.status === "sent" ? "sent" : "error",
+        message: "Could not check the staff invitation. Try again.",
+        messageTone: "error",
+        email,
+      };
+    }
+
+    if (!validInvitation) {
+      return {
+        ...previous,
+        status: previous.status === "sent" ? "sent" : "error",
+        message: "That staff invitation is invalid or expired.",
+        messageTone: "error",
+        email,
+      };
+    }
   }
 
   const supabase =

@@ -12,7 +12,10 @@ import {
   findGroup,
   getGroupItems,
 } from "@/lib/menu-static";
+import { getStorefrontAvailability } from "@/lib/storefront-availability";
 import { getStorefrontOptionGroups } from "@/lib/storefront-options";
+
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return MENU_GROUPS.flatMap((group) =>
@@ -42,7 +45,12 @@ export default async function ProductPage({
   const group = findGroup(groupSlug);
   const item = group && getGroupItems(group).find((entry) => entry.slug === itemSlug);
   if (!group || !item) notFound();
-  const optionGroups = await getStorefrontOptionGroups(item.slug);
+  const [optionGroups, availabilityMap] = await Promise.all([
+    getStorefrontOptionGroups(item.slug),
+    getStorefrontAvailability([item.slug]),
+  ]);
+  const availability = availabilityMap.get(item.slug);
+  const isAvailable = availability?.isAvailable ?? true;
 
   return (
     <>
@@ -93,11 +101,32 @@ export default async function ProductPage({
                     {item.description}
                   </p>
                 </div>
-                <ProductCustomizer
-                  item={item}
-                  groupSlug={group.slug}
-                  optionGroups={optionGroups}
-                />
+                {isAvailable ? (
+                  <ProductCustomizer
+                    item={item}
+                    groupSlug={group.slug}
+                    optionGroups={optionGroups}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-zb-bone/40 bg-zb-bone/10 p-5">
+                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-zb-bone">
+                      {availability?.statusLabel ?? "Unavailable"}
+                    </p>
+                    <h2 className="mt-2 font-display text-3xl text-zb-cream">
+                      This item is paused
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-zb-cream/65">
+                      It cannot be added to cart or ordered right now. Please choose
+                      another favorite from the menu.
+                    </p>
+                    <Link
+                      href={`/menu/${group.slug}`}
+                      className="mt-5 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft"
+                    >
+                      Back to {group.name}
+                    </Link>
+                  </div>
+                )}
               </section>
             </div>
           </div>

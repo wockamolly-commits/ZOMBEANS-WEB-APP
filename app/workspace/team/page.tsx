@@ -52,7 +52,7 @@ export default async function TeamPage() {
                 className="flex flex-col gap-3 border-b border-zb-sage/20 bg-zb-primary-strong/45 p-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{member.display_name}</p>
                     <span className="rounded-full bg-zb-bone/10 px-2 py-0.5 text-[10px] font-bold uppercase text-zb-bone">
                       {roleLabel}
@@ -61,6 +61,9 @@ export default async function TeamPage() {
                       <span className="text-xs text-zb-danger">Revoked</span>
                     )}
                   </div>
+                  {member.full_name && member.full_name !== member.display_name && (
+                    <p className="text-sm text-zb-cream/70">{member.full_name}</p>
+                  )}
                   <p className="text-sm text-zb-cream/55">{member.email}</p>
                 </div>
                 {member.id === current.id ? (

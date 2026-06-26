@@ -2,9 +2,12 @@
 
 import {
   Boxes,
+  CalendarDays,
+  Check,
   ChevronDown,
   ChevronRight,
   CircleAlert,
+  Clock3,
   Coffee,
   ImagePlus,
   Layers3,
@@ -17,6 +20,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { Select } from "@base-ui/react/select";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -45,7 +49,13 @@ type Modal =
   | { kind: "group"; group?: ManagedOptionGroup }
   | { kind: "option"; groupId: string; option?: ManagedOption }
   | { kind: "links"; group: ManagedOptionGroup }
+  | { kind: "availability"; item: ManagedMenuItem }
   | null;
+
+type AvailabilityHold =
+  | { kind: "today"; unavailableUntil: string }
+  | { kind: "indefinite"; unavailableUntil?: null }
+  | { kind: "until"; unavailableUntil: string };
 
 const inputClass =
   "w-full rounded-xl border border-zb-sage/25 bg-zb-primary px-3 py-2.5 text-sm text-zb-cream outline-none transition placeholder:text-zb-cream/30 focus:border-zb-bone/70 focus:ring-2 focus:ring-zb-bone/10";
@@ -62,6 +72,61 @@ function peso(cents: number): string {
 
 function toCents(value: string): number {
   return Math.round(Math.max(0, Number(value) || 0) * 100);
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function formatDayDate(date: Date) {
+  return new Intl.DateTimeFormat("en-PH", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
+function formatStatusUntil(value: string | null) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat("en-PH", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value));
+}
+
+function getTodayRestoreAt() {
+  return addDays(startOfLocalDay(new Date()), 1);
+}
+
+function getUpcomingRestoreOptions() {
+  const tomorrow = getTodayRestoreAt();
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(tomorrow, index);
+    return {
+      label:
+        index === 0
+          ? "Tomorrow"
+          : new Intl.DateTimeFormat("en-PH", { weekday: "long" }).format(date),
+      date,
+      value: date.toISOString(),
+    };
+  });
+}
+
+function getAvailabilityStatus(item: ManagedMenuItem) {
+  if (item.is_active) return "Available";
+  if (item.unavailability_kind === "today") return "Unavailable today";
+  if (item.unavailability_kind === "until") {
+    const until = formatStatusUntil(item.unavailable_until);
+    return until ? `Unavailable until ${until}` : "Temporarily unavailable";
+  }
+  return "Unavailable indefinitely";
 }
 
 function Toggle({
@@ -171,6 +236,160 @@ function FormMessage({ result }: { result: MenuActionResult | null }) {
   );
 }
 
+function AvailabilityModal({
+  item,
+  onDone,
+  onCancel,
+}: {
+  item: ManagedMenuItem;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<MenuActionResult | null>(null);
+  const restoreOptions = useMemo(() => getUpcomingRestoreOptions(), []);
+  const [selected, setSelected] = useState<AvailabilityHold>({
+    kind: "today",
+    unavailableUntil: getTodayRestoreAt().toISOString(),
+  });
+
+  const submit = () => {
+    setResult(null);
+    startTransition(async () => {
+      const response = await setProductAvailability(item.id, false, selected);
+      setResult(response);
+      if (response.ok) onDone();
+    });
+  };
+
+  return (
+    <div className="space-y-5 p-5 sm:p-6">
+      <div className="rounded-2xl border border-zb-sage/25 bg-zb-primary/55 p-4">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-zb-bone">
+          Product
+        </p>
+        <p className="mt-1 font-semibold text-zb-cream">{item.name}</p>
+      </div>
+
+      <div className="grid gap-3">
+        <button
+          type="button"
+          onClick={() =>
+            setSelected({
+              kind: "today",
+              unavailableUntil: getTodayRestoreAt().toISOString(),
+            })
+          }
+          className={`flex min-h-16 items-center gap-3 rounded-2xl border px-4 text-left transition ${
+            selected.kind === "today"
+              ? "border-zb-bone bg-zb-bone/12"
+              : "border-zb-sage/25 bg-zb-primary/45 hover:border-zb-sage"
+          }`}
+        >
+          <Clock3 className="size-5 shrink-0 text-zb-bone" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Unavailable for today</span>
+            <span className="mt-0.5 block text-xs text-zb-cream/50">
+              Restores tomorrow ({formatDayDate(getTodayRestoreAt())})
+            </span>
+          </span>
+          {selected.kind === "today" && <Check className="size-5 text-zb-bone" />}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSelected({ kind: "indefinite" })}
+          className={`flex min-h-16 items-center gap-3 rounded-2xl border px-4 text-left transition ${
+            selected.kind === "indefinite"
+              ? "border-zb-bone bg-zb-bone/12"
+              : "border-zb-sage/25 bg-zb-primary/45 hover:border-zb-sage"
+          }`}
+        >
+          <CircleAlert className="size-5 shrink-0 text-zb-bone" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Unavailable indefinitely</span>
+            <span className="mt-0.5 block text-xs text-zb-cream/50">
+              Restores only when a staff member turns it back on.
+            </span>
+          </span>
+          {selected.kind === "indefinite" && (
+            <Check className="size-5 text-zb-bone" />
+          )}
+        </button>
+      </div>
+
+      <section>
+        <div className="mb-3 flex items-center gap-2">
+          <CalendarDays className="size-4 text-zb-bone" />
+          <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-zb-cream/70">
+            Unavailable until
+          </h3>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {restoreOptions.map((option) => {
+            const checked =
+              selected.kind === "until" &&
+              selected.unavailableUntil === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() =>
+                  setSelected({
+                    kind: "until",
+                    unavailableUntil: option.value,
+                  })
+                }
+                className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 text-left transition ${
+                  checked
+                    ? "border-zb-bone bg-zb-bone text-zb-primary-dark"
+                    : "border-zb-sage/25 bg-zb-primary/45 text-zb-cream hover:border-zb-sage"
+                }`}
+              >
+                <span className="font-semibold">{option.label}</span>
+                <span className="font-mono-tabular text-sm">
+                  {formatDayDate(option.date)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="rounded-2xl border border-zb-bone/30 bg-zb-bone/10 p-4">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-zb-bone">
+          Selected status
+        </p>
+        <p className="mt-1 text-sm text-zb-cream/75">
+          {selected.kind === "indefinite"
+            ? "Unavailable indefinitely"
+            : `Unavailable until ${formatStatusUntil(selected.unavailableUntil)}`}
+        </p>
+      </div>
+
+      <FormMessage result={result} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="rounded-xl border border-zb-sage/35 px-4 py-3 text-sm font-bold text-zb-cream transition hover:bg-zb-primary disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={pending}
+          className="rounded-xl bg-zb-bone px-4 py-3 text-sm font-bold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-50"
+        >
+          {pending ? "Updating..." : "Mark unavailable"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CategoryForm({
   category,
   onDone,
@@ -267,6 +486,12 @@ function ProductForm({
   const [linkedGroups, setLinkedGroups] = useState(
     new Set(item?.option_links.map((link) => link.group_id) ?? [])
   );
+  const [selectedProductCategoryId, setSelectedProductCategoryId] = useState(
+    item?.category_id ?? categoryId
+  );
+  const selectedProductCategoryName =
+    categories.find((category) => category.id === selectedProductCategoryId)
+      ?.name ?? "Select category";
   const [imageName, setImageName] = useState("");
 
   const updateVariation = (
@@ -332,21 +557,56 @@ function ProductForm({
           />
         </div>
         <div>
-          <label className={labelClass} htmlFor="product-category">
+          <label className={labelClass} id="product-category-label">
             Category
           </label>
-          <select
-            id="product-category"
+          <Select.Root
+            items={categories}
             name="categoryId"
-            defaultValue={item?.category_id ?? categoryId}
-            className={inputClass}
+            required
+            value={selectedProductCategoryId}
+            onValueChange={(value) =>
+              setSelectedProductCategoryId(value ?? categoryId)
+            }
           >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+            <Select.Trigger
+              aria-labelledby="product-category-label"
+              className="group flex h-12 w-full items-center rounded-xl border border-zb-sage/25 bg-zb-primary px-3 text-left text-sm font-semibold text-zb-cream shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition hover:border-zb-sage/60 data-[popup-open]:border-zb-bone/70 data-[popup-open]:ring-2 data-[popup-open]:ring-zb-bone/10 focus-visible:border-zb-bone/70 focus-visible:ring-2 focus-visible:ring-zb-bone/10"
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {selectedProductCategoryName}
+              </span>
+              <ChevronDown className="ml-3 size-4 shrink-0 text-zb-cream/55 transition group-data-[popup-open]:rotate-180 group-data-[popup-open]:text-zb-bone" />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Positioner
+                sideOffset={8}
+                align="start"
+                alignItemWithTrigger={false}
+                className="z-[60]"
+              >
+                <Select.Popup className="w-[var(--anchor-width)] min-w-72 origin-[var(--transform-origin)] overflow-hidden rounded-2xl border border-zb-bone/35 bg-zb-primary-dark p-2 text-zb-cream shadow-[0_24px_70px_rgba(0,0,0,0.55)] outline-none transition data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+                  <div className="px-3 pb-2 pt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-zb-bone/75">
+                    Product category
+                  </div>
+                  <Select.List className="max-h-72 overflow-y-auto overscroll-contain pr-1 [scrollbar-color:rgba(229,192,123,0.6)_transparent] [scrollbar-width:thin]">
+                    {categories.map((category) => (
+                      <Select.Item
+                        key={category.id}
+                        value={category.id}
+                        className="grid min-h-11 cursor-default grid-cols-[1fr_auto] items-center gap-3 rounded-xl px-3 text-sm font-semibold text-zb-cream/78 outline-none transition data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:text-zb-primary-dark"
+                      >
+                        <Select.ItemText>{category.name}</Select.ItemText>
+                        <Select.ItemIndicator>
+                          <Check className="size-4" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                    ))}
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
         </div>
       </div>
       <div>
@@ -874,6 +1134,10 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
   };
 
   const toggleItem = (item: ManagedMenuItem, active: boolean) => {
+    if (!active) {
+      setModal({ kind: "availability", item });
+      return;
+    }
     setPendingId(item.id);
     startTransition(async () => {
       await setProductAvailability(item.id, active);
@@ -1163,8 +1427,16 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                                     <span className="mt-1 line-clamp-2 block text-sm leading-5 text-zb-primary/55">
                                       {item.description || "No description yet."}
                                     </span>
-                                    <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
-                                      <Pencil className="size-3" /> Edit product
+                                    <span className="mt-2 flex flex-wrap items-center gap-2">
+                                      {!item.is_active && (
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-zb-primary/10 bg-zb-primary/8 px-2 py-1 text-[11px] font-semibold text-zb-primary/65">
+                                          <Clock3 className="size-3 shrink-0 text-zb-primary/45" />
+                                          {getAvailabilityStatus(item)}
+                                        </span>
+                                      )}
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.08em] text-zb-sage opacity-70 transition group-hover:opacity-100">
+                                        <Pencil className="size-3" /> Edit product
+                                      </span>
                                     </span>
                                   </div>
                                   <div
@@ -1412,12 +1684,16 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
                     ? modal.option
                       ? "Edit option"
                       : "Add option"
-                    : `Link products`
+                    : modal.kind === "availability"
+                      ? "Mark unavailable"
+                      : `Link products`
           }
           subtitle={
             modal.kind === "links"
               ? `Choose where “${modal.group.name}” should appear.`
-              : undefined
+              : modal.kind === "availability"
+                ? "Choose when this product should return to the menu."
+                : undefined
           }
           onClose={() => setModal(null)}
         >
@@ -1448,6 +1724,13 @@ export function MenuManager({ initialData }: { initialData: MenuManagementData }
               group={modal.group}
               categories={initialData.categories}
               onDone={closeAndRefresh}
+            />
+          )}
+          {modal.kind === "availability" && (
+            <AvailabilityModal
+              item={modal.item}
+              onDone={closeAndRefresh}
+              onCancel={() => setModal(null)}
             />
           )}
         </ModalShell>

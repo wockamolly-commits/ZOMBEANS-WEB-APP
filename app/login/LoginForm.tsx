@@ -44,6 +44,11 @@ function loginErrorMessage(error: string | null) {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "";
+  const isStaffInvite = searchParams.get("invite") === "staff";
+  const inviteEmail = isStaffInvite ? (searchParams.get("email") ?? "") : "";
+  const invitationId = isStaffInvite
+    ? (searchParams.get("invitationId") ?? "")
+    : "";
   const initialError = loginErrorMessage(searchParams.get("error"));
   const [loginState, loginAction, loginPending] = useActionState(
     requestOtp,
@@ -58,12 +63,36 @@ export function LoginForm() {
     digits: string[];
   }>({ sentKey: 0, digits: EMPTY_DIGITS });
   const [now, setNow] = useState(() => Date.now());
+  const loginFormRef = useRef<HTMLFormElement | null>(null);
+  const autoSubmittedInviteRef = useRef(false);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (window.location.hash) {
+      window.history.replaceState(
+        null,
+        "",
+        `${window.location.pathname}${window.location.search}`
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      !autoSubmittedInviteRef.current &&
+      inviteEmail &&
+      invitationId &&
+      loginState.status === "idle"
+    ) {
+      autoSubmittedInviteRef.current = true;
+      loginFormRef.current?.requestSubmit();
+    }
+  }, [invitationId, inviteEmail, loginState.status]);
 
   useEffect(() => {
     if (loginState.status === "sent") {
@@ -219,6 +248,7 @@ export function LoginForm() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <form action={loginAction} className="flex-1">
             <input type="hidden" name="email" value={loginState.email} />
+            <input type="hidden" name="invitationId" value={invitationId} />
             <input type="hidden" name="next" value={next} />
             <button
               type="submit"
@@ -246,8 +276,9 @@ export function LoginForm() {
   }
 
   return (
-    <form action={loginAction} className="mt-8 space-y-4">
+    <form ref={loginFormRef} action={loginAction} className="mt-8 space-y-4">
       <input type="hidden" name="next" value={next} />
+      <input type="hidden" name="invitationId" value={invitationId} />
       <label className="block text-sm font-medium text-zb-cream">
         Email
         <span className="relative block">
@@ -257,12 +288,19 @@ export function LoginForm() {
             type="email"
             required
             autoComplete="email"
-            defaultValue={loginState.email ?? ""}
+            defaultValue={loginState.email ?? inviteEmail}
             placeholder="you@email.com"
+            readOnly={Boolean(inviteEmail)}
             className="mt-2 h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-4 pl-11 text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none focus:ring-2 focus:ring-zb-bone/20"
           />
         </span>
       </label>
+      {isStaffInvite && !initialError && loginState.status === "idle" && (
+        <p className="rounded-lg border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs text-zb-cream">
+          Opening your staff invitation. We&apos;ll email the 6-digit code on
+          this page.
+        </p>
+      )}
       {(loginState.status === "error" || initialError) && (
         <p
           role="alert"

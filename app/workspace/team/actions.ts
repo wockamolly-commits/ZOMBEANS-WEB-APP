@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { refresh, revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import * as z from "zod";
 import { requireSuperAdmin } from "@/lib/admin";
 import { isConfiguredSuperAdminEmail } from "@/lib/admin-auth";
@@ -23,6 +24,17 @@ const inviteSchema = z.object({
   role: z.string().refine(isStaffJobRole),
 });
 const idSchema = z.uuid();
+
+async function siteUrl(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+
+  const headerStore = await headers();
+  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+  const protocol = headerStore.get("x-forwarded-proto") ?? "http";
+  if (!host) throw new Error("Site URL is not configured.");
+  return `${protocol}://${host}`;
+}
 
 export async function inviteStaff(
   _previous: TeamActionState,
@@ -87,27 +99,47 @@ export async function inviteStaff(
     return { status: "error", message: "Could not create the invitation." };
   }
 
-  const sent = await admin.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      data: {
-        display_name: displayName,
-        staff_invitation_id: invitationId,
-        staff_role: role,
-      },
+  const redirectUrl = new URL("/auth/invite", await siteUrl());
+  redirectUrl.searchParams.set("invitationId", invitationId);
+  redirectUrl.searchParams.set("email", email);
+  redirectUrl.searchParams.set("next", "/workspace");
+
+  const sent = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: redirectUrl.toString(),
+    data: {
+      display_name: displayName,
+      staff_invitation_id: invitationId,
+      staff_role: role,
     },
   });
   if (sent.error) {
     await admin.from("staff_invitations").delete().eq("id", invitationId);
-    console.error("[team] invitation OTP failed:", sent.error.message);
+    console.error("[team] invitation email failed:", sent.error.message);
     return {
       status: "error",
       message:
         sent.error.status === 429
-          ? "Too many invitation code requests. Please wait a bit and try again."
-          : "The invitation code could not be sent. Check the email provider settings.",
+          ? "Too many invitation email requests. Please wait a bit and try again."
+          : "The invitation email could not be sent. Check the email provider settings.",
     };
+  }
+
+  const userId = sent.data.user?.id;
+  if (userId) {
+    const metadata = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...(sent.data.user?.user_metadata ?? {}),
+        display_name: displayName,
+        staff_invitation_id: invitationId,
+        staff_role: role,
+      },
+    });
+    if (metadata.error) {
+      console.error(
+        "[team] invitation metadata update failed:",
+        metadata.error.message
+      );
+    }
   }
 
   await admin.from("audit_logs").insert({
@@ -126,7 +158,7 @@ export async function inviteStaff(
   revalidatePath("/workspace/team");
   return {
     status: "success",
-    message: `${STAFF_ROLES[role].label} invitation created for ${email}. A 6-digit sign-in code was sent.`,
+    message: `${STAFF_ROLES[role].label} invitation link sent to ${email}. Their 6-digit code will be sent after they open it.`,
   };
 }
 

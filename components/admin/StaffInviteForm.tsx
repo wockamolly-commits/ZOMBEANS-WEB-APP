@@ -22,8 +22,8 @@ export function StaffInviteForm() {
         <div>
           <h2 className="font-display text-xl text-zb-cream">INVITE STAFF</h2>
           <p className="text-xs text-zb-cream/50">
-            Staff-only access. The invite is valid for 48 hours; sign-in uses a
-            6-digit email code.
+            Staff-only access. The invite is valid for 48 hours; the code is
+            sent after they open the invite link.
           </p>
         </div>
       </div>

@@ -34,6 +34,20 @@ const productSchema = z.object({
   variations: z.array(variationSchema).min(1).max(30),
   optionGroupIds: z.array(id).max(30),
 });
+const availabilityHoldSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("today"),
+    unavailableUntil: z.iso.datetime(),
+  }),
+  z.object({
+    kind: z.literal("until"),
+    unavailableUntil: z.iso.datetime(),
+  }),
+  z.object({
+    kind: z.literal("indefinite"),
+    unavailableUntil: z.null().optional(),
+  }),
+]);
 const optionGroupSchema = z.object({
   id: optionalId,
   name: z.string().trim().min(2).max(100),
@@ -179,6 +193,9 @@ export async function saveProduct(formData: FormData): Promise<MenuActionResult>
           name: product.name,
           description: product.description || null,
           is_active: product.isActive,
+          ...(product.isActive
+            ? { unavailability_kind: null, unavailable_until: null }
+            : { unavailability_kind: "indefinite", unavailable_until: null }),
           is_bestseller: product.isBestseller,
           ...(imageUrl ? { image_url: imageUrl } : {}),
         })
@@ -202,6 +219,8 @@ export async function saveProduct(formData: FormData): Promise<MenuActionResult>
           description: product.description || null,
           image_url: imageUrl ?? null,
           is_active: product.isActive,
+          unavailability_kind: product.isActive ? null : "indefinite",
+          unavailable_until: null,
           is_bestseller: product.isBestseller,
           sort_order: (max.data?.sort_order ?? 0) + 10,
         })
@@ -258,19 +277,49 @@ export async function saveProduct(formData: FormData): Promise<MenuActionResult>
 
 export async function setProductAvailability(
   itemId: string,
-  active: boolean
+  active: boolean,
+  hold?: z.input<typeof availabilityHoldSchema>
 ): Promise<MenuActionResult> {
   const { profile } = await requireSuperAdmin("/workspace/menu");
   const parsed = id.safeParse(itemId);
   if (!parsed.success) return { ok: false, error: "Invalid product." };
+  const parsedHold = active
+    ? null
+    : availabilityHoldSchema.safeParse(hold);
+  if (!active && (!parsedHold || !parsedHold.success)) {
+    return { ok: false, error: "Choose how long this product should be unavailable." };
+  }
+
+  const unavailableUntil =
+    !active && parsedHold?.success && parsedHold.data.kind !== "indefinite"
+      ? new Date(parsedHold.data.unavailableUntil)
+      : null;
+  if (unavailableUntil && unavailableUntil.getTime() <= Date.now()) {
+    return { ok: false, error: "Choose a future date for the product to return." };
+  }
+
   const admin = await createAdminSessionClient();
   const result = await admin
     .from("menu_items")
-    .update({ is_active: active })
+    .update({
+      is_active: active,
+      unavailability_kind: active
+        ? null
+        : parsedHold?.success
+          ? parsedHold.data.kind
+          : null,
+      unavailable_until: active ? null : unavailableUntil?.toISOString() ?? null,
+    })
     .eq("id", parsed.data);
   if (result.error) return fail(result.error);
   await audit(profile.id, "menu.item.availability_changed", "menu_items", parsed.data, {
     is_active: active,
+    unavailability_kind: active
+      ? null
+      : parsedHold?.success
+        ? parsedHold.data.kind
+        : null,
+    unavailable_until: active ? null : unavailableUntil?.toISOString() ?? null,
   });
   refreshMenu();
   return { ok: true };

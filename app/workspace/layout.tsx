@@ -4,6 +4,7 @@ import {
   ExternalLink,
   LayoutDashboard,
   MenuSquare,
+  UserRound,
   UsersRound,
 } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
@@ -33,6 +34,7 @@ export default async function AdminLayout({
     ...(hasStaffPermission(profile, "team:manage")
       ? [{ href: "/workspace/team", label: "Team", icon: UsersRound }]
       : []),
+    { href: "/workspace/account", label: "Account", icon: UserRound },
   ];
   const roleLabel =
     profile.role === "admin"
@@ -52,12 +54,15 @@ export default async function AdminLayout({
             </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="hidden text-zb-cream/65 sm:inline">
+            <Link
+              href="/workspace/account"
+              className="hidden text-zb-cream/65 transition hover:text-zb-cream sm:inline"
+            >
               {profile.display_name}
               <span className="ml-1 text-zb-cream/40">
                 ({roleLabel.toLowerCase()})
               </span>
-            </span>
+            </Link>
             <AdminSignOut />
           </div>
         </div>

@@ -82,6 +82,10 @@ function nextAction(order: AdminOrder) {
   return null;
 }
 
+function canRecordManualPayment(order: AdminOrder) {
+  return order.status === "ready" || order.status === "out_for_delivery";
+}
+
 export function OrderCard({
   order,
   riders,
@@ -240,8 +244,7 @@ export function OrderCard({
         {!paid &&
           order.payment &&
           order.payment.method === "cash" &&
-          order.status !== "rejected" &&
-          order.status !== "cancelled" && (
+          canRecordManualPayment(order) && (
             <ActionBtn
               disabled={pending}
               onClick={() => run(() => recordPayment(order.id))}

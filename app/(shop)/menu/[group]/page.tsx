@@ -14,6 +14,12 @@ import {
   MENU_GROUPS,
   type StaticItem,
 } from "@/lib/menu-static";
+import {
+  getStorefrontAvailability,
+  type StorefrontAvailability,
+} from "@/lib/storefront-availability";
+
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return MENU_GROUPS.map((g) => ({ group: g.slug }));
@@ -29,12 +35,18 @@ export async function generateMetadata({
   return { title: group?.name ?? "Menu" };
 }
 
-function ItemCard({ item, groupSlug }: { item: StaticItem; groupSlug: string }) {
-  return (
-    <Link
-      href={`/menu/${groupSlug}/${item.slug}`}
-      className="group rounded-2xl border border-border bg-card overflow-hidden hover:border-zb-bone/60 transition"
-    >
+function ItemCard({
+  item,
+  groupSlug,
+  availability,
+}: {
+  item: StaticItem;
+  groupSlug: string;
+  availability?: StorefrontAvailability;
+}) {
+  const isAvailable = availability?.isAvailable ?? true;
+  const content = (
+    <>
       <div
         className="relative aspect-square overflow-hidden"
         style={{
@@ -42,6 +54,13 @@ function ItemCard({ item, groupSlug }: { item: StaticItem; groupSlug: string }) 
             "radial-gradient(circle at 50% 38%, rgba(255,248,232,0.92) 0%, rgba(237,224,214,0.58) 34%, transparent 66%), linear-gradient(145deg, #d7cdb9 0%, #b9bda5 52%, #96a386 100%)",
         }}
       >
+        {!isAvailable && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-zb-primary-dark/72 px-3 text-center backdrop-blur-[2px]">
+            <span className="rounded-full border border-zb-bone/55 bg-zb-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zb-bone">
+              {availability?.statusLabel ?? "Unavailable"}
+            </span>
+          </div>
+        )}
         <div className="absolute inset-[8%] rounded-full border border-zb-primary/10 shadow-[inset_0_0_40px_rgba(255,248,232,0.2)]" aria-hidden />
         <div className="absolute inset-x-[12%] bottom-[8%] h-[10%] rounded-full bg-zb-primary-dark/20 blur-md" aria-hidden />
         <Image
@@ -64,13 +83,34 @@ function ItemCard({ item, groupSlug }: { item: StaticItem; groupSlug: string }) 
         </p>
         <div className="mt-2 flex items-center justify-between gap-2">
           <PesoPrice cents={getDefaultPriceCents(item)} />
-          {item.variations.length > 1 && (
+          {!isAvailable ? (
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-zb-bone">
+              Paused
+            </span>
+          ) : item.variations.length > 1 && (
             <span className="text-[10px] text-zb-cream/55 font-mono-tabular">
               {item.variations.length} sizes
             </span>
           )}
         </div>
       </div>
+    </>
+  );
+
+  if (!isAvailable) {
+    return (
+      <div className="overflow-hidden rounded-2xl border border-zb-bone/40 bg-card/75 opacity-85">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/menu/${groupSlug}/${item.slug}`}
+      className="group overflow-hidden rounded-2xl border border-border bg-card transition hover:border-zb-bone/60"
+    >
+      {content}
     </Link>
   );
 }
@@ -86,6 +126,9 @@ export default async function MenuGroupPage({
 
   const categories = getGroupCategories(group);
   const flatItems = getGroupItems(group);
+  const availability = await getStorefrontAvailability(
+    flatItems.map((item) => item.slug)
+  );
 
   return (
     <>
@@ -118,7 +161,12 @@ export default async function MenuGroupPage({
           <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
               {flatItems.map((item) => (
-                <ItemCard key={item.slug} item={item} groupSlug={group.slug} />
+                <ItemCard
+                  key={item.slug}
+                  item={item}
+                  groupSlug={group.slug}
+                  availability={availability.get(item.slug)}
+                />
               ))}
             </div>
           </section>
@@ -167,7 +215,12 @@ export default async function MenuGroupPage({
                 </div>
                 <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                   {cat.items.map((item) => (
-                    <ItemCard key={item.slug} item={item} groupSlug={group.slug} />
+                    <ItemCard
+                      key={item.slug}
+                      item={item}
+                      groupSlug={group.slug}
+                      availability={availability.get(item.slug)}
+                    />
                   ))}
                 </div>
               </section>
