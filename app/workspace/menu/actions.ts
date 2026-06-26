@@ -452,7 +452,7 @@ export async function setOptionAvailability(
     .select("id");
   if (result.error) return fail(result.error);
   if (!result.data || result.data.length === 0) {
-    return { ok: false, error: "You don't have permission to change this option." };
+    return { ok: false, error: "Option not found or could not be changed." };
   }
   await audit(profile.id, "menu.option.availability_changed", "menu_options", parsed.data, {
     is_active: active,

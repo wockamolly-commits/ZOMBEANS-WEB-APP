@@ -1409,9 +1409,9 @@ export function MenuManager({
                                   },
                                 }
                               : {})}
-                            className={`group overflow-hidden rounded-2xl border border-zb-primary/10 bg-[#f7eee6] shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone ${
+                            className={`group overflow-hidden rounded-2xl border border-zb-primary/10 bg-[#f7eee6] shadow-sm transition ${
                               can.configure
-                                ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md"
+                                ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone"
                                 : ""
                             }`}
                           >
@@ -1638,9 +1638,9 @@ export function MenuManager({
                             },
                           }
                         : {})}
-                      className={`group flex items-center gap-4 rounded-2xl border border-zb-primary/10 bg-[#f7eee6] p-4 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone ${
+                      className={`group flex items-center gap-4 rounded-2xl border border-zb-primary/10 bg-[#f7eee6] p-4 shadow-sm transition ${
                         can.configure
-                          ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md"
+                          ? "cursor-pointer hover:-translate-y-0.5 hover:border-zb-sage/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zb-bone"
                           : ""
                       }`}
                     >

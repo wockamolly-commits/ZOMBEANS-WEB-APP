@@ -35,17 +35,22 @@ const ROLE_PERMISSIONS: Record<StaffJobRole, readonly StaffPermission[]> = {
   rider: ["deliveries:view", "deliveries:manage"],
 };
 
-const ALL_PERMISSIONS: readonly StaffPermission[] = [
-  "dashboard:view",
-  "orders:view",
-  "orders:manage",
-  "menu:view",
-  "menu:availability",
-  "menu:configure",
-  "team:manage",
-  "deliveries:view",
-  "deliveries:manage",
-];
+// Derived from a fully-keyed Record so the compiler forces this list to stay in
+// sync with the StaffPermission union: adding a permission to the union without
+// adding it here is a type error (a missing key), preventing isStaffPermission
+// from silently rejecting a valid permission.
+const PERMISSION_KEYS: Record<StaffPermission, true> = {
+  "dashboard:view": true,
+  "orders:view": true,
+  "orders:manage": true,
+  "menu:view": true,
+  "menu:availability": true,
+  "menu:configure": true,
+  "team:manage": true,
+  "deliveries:view": true,
+  "deliveries:manage": true,
+};
+const ALL_PERMISSIONS = Object.keys(PERMISSION_KEYS) as StaffPermission[];
 
 export type PermissionOverride = {
   permission: StaffPermission;
