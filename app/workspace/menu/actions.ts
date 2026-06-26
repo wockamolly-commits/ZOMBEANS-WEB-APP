@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
-import { requireSuperAdmin } from "@/lib/admin";
+import { requireStaffPermission } from "@/lib/admin";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type MenuActionResult =
@@ -107,7 +107,7 @@ function refreshMenu() {
 export async function saveCategory(
   input: z.input<typeof categorySchema>
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:configure", "/workspace/menu");
   const parsed = categorySchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the category details." };
   const admin = await createAdminSessionClient();
@@ -155,7 +155,7 @@ export async function saveCategory(
 }
 
 export async function saveProduct(formData: FormData): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:configure", "/workspace/menu");
   let raw: unknown;
   try {
     raw = JSON.parse(String(formData.get("payload") ?? "{}"));
@@ -280,7 +280,7 @@ export async function setProductAvailability(
   active: boolean,
   hold?: z.input<typeof availabilityHoldSchema>
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:availability", "/workspace/menu");
   const parsed = id.safeParse(itemId);
   if (!parsed.success) return { ok: false, error: "Invalid product." };
   const parsedHold = active
@@ -328,7 +328,7 @@ export async function setProductAvailability(
 export async function saveOptionGroup(
   input: z.input<typeof optionGroupSchema>
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:configure", "/workspace/menu");
   const parsed = optionGroupSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the option group details." };
   const admin = await createAdminSessionClient();
@@ -383,7 +383,7 @@ export async function saveOptionGroup(
 export async function saveOption(
   input: z.input<typeof optionSchema>
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:configure", "/workspace/menu");
   const parsed = optionSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the option details." };
   const admin = await createAdminSessionClient();
@@ -441,7 +441,7 @@ export async function setOptionAvailability(
   optionId: string,
   active: boolean
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:availability", "/workspace/menu");
   const parsed = id.safeParse(optionId);
   if (!parsed.success) return { ok: false, error: "Invalid option." };
   const admin = await createAdminSessionClient();
@@ -460,7 +460,7 @@ export async function setOptionAvailability(
 export async function linkOptionGroup(
   input: z.input<typeof linkSchema>
 ): Promise<MenuActionResult> {
-  const { profile } = await requireSuperAdmin("/workspace/menu");
+  const { profile } = await requireStaffPermission("menu:configure", "/workspace/menu");
   const parsed = linkSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Check the selected products." };
   const admin = await createAdminSessionClient();
