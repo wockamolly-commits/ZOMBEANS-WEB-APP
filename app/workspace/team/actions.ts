@@ -436,13 +436,16 @@ export async function updateStaffPermissions(
     }
   }
 
-  await admin.from("audit_logs").insert({
+  const permAudit = await admin.from("audit_logs").insert({
     actor_profile_id: actor.id,
     action: "staff_permissions.updated",
     target_table: "profiles",
     target_id: targetId.data,
     diff: { permissions: effective },
   });
+  if (permAudit.error) {
+    console.error("[team] permission update audit failed:", permAudit.error.message);
+  }
 
   revalidatePath("/workspace", "layout");
   revalidatePath("/workspace/team");
