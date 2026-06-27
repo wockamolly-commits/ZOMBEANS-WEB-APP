@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Minus, Plus, X } from "lucide-react";
 import { Select } from "@base-ui/react/select";
 import {
@@ -36,6 +37,7 @@ export function StoreAvailabilityModal({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const [editingClosed, setEditingClosed] = useState(!state.isOpen);
   const [reason, setReason] = useState<ClosureReasonCode>(
     state.closureReasonCode ?? "temporary"
@@ -57,7 +59,10 @@ export function StoreAvailabilityModal({
     startTransition(async () => {
       const result = await fn();
       if (!result.ok) setError(result.error ?? "Something went wrong.");
-      else onClose();
+      else {
+        router.refresh();
+        onClose();
+      }
     });
   }
 
@@ -82,6 +87,7 @@ export function StoreAvailabilityModal({
           <button
             type="button"
             onClick={onClose}
+            aria-label="Close dialog"
             className="grid size-9 place-items-center rounded-full border border-zb-sage/25 text-zb-cream/60 transition hover:bg-zb-primary hover:text-zb-cream"
           >
             <X className="size-4" />
@@ -162,7 +168,7 @@ export function StoreAvailabilityModal({
                   <button
                     type="button"
                     aria-label="Decrease"
-                    disabled={minutes <= HIGH_DEMAND_MIN_MINUTES}
+                    disabled={pending || minutes <= HIGH_DEMAND_MIN_MINUTES}
                     onClick={() =>
                       setMinutes((m) =>
                         Math.max(HIGH_DEMAND_MIN_MINUTES, m - HIGH_DEMAND_STEP_MINUTES)
@@ -181,7 +187,7 @@ export function StoreAvailabilityModal({
                   <button
                     type="button"
                     aria-label="Increase"
-                    disabled={minutes >= HIGH_DEMAND_MAX_MINUTES}
+                    disabled={pending || minutes >= HIGH_DEMAND_MAX_MINUTES}
                     onClick={() =>
                       setMinutes((m) =>
                         Math.min(HIGH_DEMAND_MAX_MINUTES, m + HIGH_DEMAND_STEP_MINUTES)
@@ -245,6 +251,7 @@ export function StoreAvailabilityModal({
                   items={REASONS}
                   value={reason}
                   onValueChange={(v) => setReason(v as ClosureReasonCode)}
+                  disabled={pending}
                 >
                   <Select.Trigger className="group flex h-12 w-full items-center rounded-xl border border-zb-sage/35 bg-zb-primary-dark/65 px-4 text-left text-sm text-zb-cream outline-none transition hover:border-zb-sage data-[popup-open]:border-zb-bone">
                     <Select.Value placeholder="Choose a reason" className="flex-1" />
@@ -253,18 +260,20 @@ export function StoreAvailabilityModal({
                   <Select.Portal>
                     <Select.Positioner sideOffset={8} className="z-[70]">
                       <Select.Popup className="w-[var(--anchor-width)] rounded-2xl border border-zb-bone/45 bg-zb-primary-dark p-2 text-zb-cream shadow-2xl outline-none">
-                        {REASONS.map((r) => (
-                          <Select.Item
-                            key={r.value}
-                            value={r.value}
-                            className="grid min-h-10 cursor-default grid-cols-[1fr_auto] items-center rounded-xl px-3 text-sm text-zb-cream/75 outline-none data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:font-semibold data-[selected]:text-zb-primary-dark"
-                          >
-                            <Select.ItemText>{r.label}</Select.ItemText>
-                            <Select.ItemIndicator className="ml-3">
-                              <Check className="size-4" />
-                            </Select.ItemIndicator>
-                          </Select.Item>
-                        ))}
+                        <Select.List>
+                          {REASONS.map((r) => (
+                            <Select.Item
+                              key={r.value}
+                              value={r.value}
+                              className="grid min-h-10 cursor-default grid-cols-[1fr_auto] items-center rounded-xl px-3 text-sm text-zb-cream/75 outline-none data-[highlighted]:bg-zb-sage/25 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:font-semibold data-[selected]:text-zb-primary-dark"
+                            >
+                              <Select.ItemText>{r.label}</Select.ItemText>
+                              <Select.ItemIndicator className="ml-3">
+                                <Check className="size-4" />
+                              </Select.ItemIndicator>
+                            </Select.Item>
+                          ))}
+                        </Select.List>
                       </Select.Popup>
                     </Select.Positioner>
                   </Select.Portal>
@@ -325,7 +334,7 @@ export function StoreAvailabilityModal({
                     run(() =>
                       setStoreClosed({
                         reasonCode: reason,
-                        note: note || undefined,
+                        note: reason === "custom" ? note || undefined : undefined,
                         until: until || null,
                       })
                     )
