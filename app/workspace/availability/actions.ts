@@ -90,6 +90,9 @@ export async function setStoreOpen(): Promise<StoreActionResult> {
       closure_reason_code: null,
       closure_note: null,
       closed_until: null,
+      high_demand: false,
+      high_demand_minutes: null,
+      high_demand_until: null,
     })
     .eq("id", 1);
   if (error) return { ok: false, error: "Could not reopen the store." };
@@ -111,6 +114,8 @@ export async function setStoreClosed(
   }
 
   let closedUntil: string | null = until ?? null;
+  // "today" defaults to end-of-slot, but an explicit `until` (e.g. a 30-min
+  // preset) is honored if the caller provides one.
   if (code === "today" && !closedUntil) {
     closedUntil = endOfSlotISO();
   }
