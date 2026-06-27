@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useState } from "react";
+import { useActionState, useId, useMemo, useState, useSyncExternalStore } from "react";
 import {
   ChevronDown,
   LayoutDashboard,
@@ -30,6 +30,25 @@ const SECTIONS = ["Dashboard", "Orders", "Menu", "Store"] as const;
 // Shared across members so collapsing one applies the preference everywhere,
 // keeping the team list compact once the admin picks a reading mode.
 const OPEN_STORAGE_KEY = "zb:staff-perms-open";
+
+function getOpenSnapshot(): boolean {
+  try {
+    return window.localStorage.getItem(OPEN_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+const OPEN_EVENT = "zb:staff-perms-open-change";
+
+function subscribeOpen(callback: () => void): () => void {
+  window.addEventListener(OPEN_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(OPEN_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
 
 const SECTION_META: Record<
   GrantablePermission["section"],
@@ -117,28 +136,16 @@ export function StaffPermissionsForm({
     [...enabled].some((permission) => !baseline.has(permission));
 
   const panelId = useId();
-  const [open, setOpen] = useState(false);
+  const open = useSyncExternalStore(subscribeOpen, getOpenSnapshot, () => false);
 
-  // Restore the last expand/collapse preference after mount (server renders
-  // collapsed, so this avoids a hydration mismatch).
-  useEffect(() => {
+  const toggleOpen = () => {
     try {
-      setOpen(window.localStorage.getItem(OPEN_STORAGE_KEY) === "1");
+      window.localStorage.setItem(OPEN_STORAGE_KEY, open ? "0" : "1");
     } catch {
-      // ignore unavailable storage (e.g. privacy mode)
+      // ignore unavailable storage
     }
-  }, []);
-
-  const toggleOpen = () =>
-    setOpen((prev) => {
-      const next = !prev;
-      try {
-        window.localStorage.setItem(OPEN_STORAGE_KEY, next ? "1" : "0");
-      } catch {
-        // ignore unavailable storage
-      }
-      return next;
-    });
+    window.dispatchEvent(new Event(OPEN_EVENT));
+  };
 
   return (
     <form
