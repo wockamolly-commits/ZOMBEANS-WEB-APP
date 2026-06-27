@@ -8,9 +8,11 @@ import {
   UsersRound,
 } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
+import { StoreAvailabilityControl } from "@/components/admin/StoreAvailabilityControl";
 import { Logo } from "@/components/shared/Logo";
 import { hasStaffPermission, requireStaff } from "@/lib/admin";
 import { STAFF_ROLES } from "@/lib/staff-roles";
+import { getStoreAvailability } from "@/lib/store-availability-data";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,9 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { profile } = await requireStaff();
+  const storeAvailability = hasStaffPermission(profile, "store:availability")
+    ? await getStoreAvailability()
+    : null;
   const nav = [
     ...(hasStaffPermission(profile, "dashboard:view") ? [NAV[0]] : []),
     ...(hasStaffPermission(profile, "orders:view") ? [NAV[1]] : []),
@@ -91,6 +96,9 @@ export default async function AdminLayout({
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {children}
       </main>
+      {storeAvailability && (
+        <StoreAvailabilityControl state={storeAvailability} />
+      )}
     </div>
   );
 }
