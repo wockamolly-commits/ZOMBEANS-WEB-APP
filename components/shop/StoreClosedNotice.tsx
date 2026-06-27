@@ -23,10 +23,13 @@ export async function StoreClosedNotice() {
       >
         <AlertTriangle className="mt-0.5 size-5 shrink-0 text-zb-danger" />
         <div>
-          <p className="font-semibold text-zb-cream">Currently closed</p>
+          <p className="font-semibold text-zb-cream">
+            Online ordering is currently unavailable
+          </p>
           <p className="mt-0.5 leading-6 text-zb-cream/80">
-            {state.closureLabel ?? "We've paused online orders for now."}
-            {until ? ` We expect to reopen around ${until}.` : ""}
+            {state.closureLabel ? `${state.closureLabel}. ` : ""}
+            You can still visit us in person — only online orders are paused
+            {until ? ` until around ${until}` : " for now"}.
           </p>
         </div>
       </div>

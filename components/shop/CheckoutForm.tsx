@@ -194,35 +194,49 @@ export function CheckoutForm({
   // webstore is not manually closed. This screen re-enables itself
   // automatically once the café opens (see the refresh interval above).
   if ((!storeOpen || !webstoreOpen) && !isTestOrder) {
+    // Two distinct causes with different messaging: the café is outside its
+    // operating hours (storeOpen false → the café itself is closed), or staff
+    // manually paused online ordering while the café may still be open for
+    // walk-ins (webstoreOpen false). Outside-hours takes precedence since the
+    // café is genuinely closed then.
+    const onlineOnly = storeOpen && !webstoreOpen;
+    const reopen = closedUntil
+      ? new Intl.DateTimeFormat("en-PH", {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: "Asia/Manila",
+        }).format(new Date(closedUntil))
+      : null;
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <Clock3 className="mx-auto size-12 text-zb-bone" />
-        <h1 className="mt-5 font-display text-5xl">THE CAFÉ IS CLOSED</h1>
-        <p className="mt-3 text-zb-cream/70">
-          Ordering is paused outside our operating hours. Your cart is saved —
-          come back when we&apos;re open and check out then.
-        </p>
-        {!webstoreOpen && (
-          <p className="mt-2 text-sm text-zb-bone">
-            {closureLabel ?? "Online ordering is paused right now."}
-            {closedUntil
-              ? ` Reopening around ${new Intl.DateTimeFormat("en-PH", {
-                  weekday: "short",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  timeZone: "Asia/Manila",
-                }).format(new Date(closedUntil))}.`
-              : ""}
+        <h1 className="mt-5 font-display text-5xl">
+          {onlineOnly ? "ONLINE ORDERING UNAVAILABLE" : "THE CAFÉ IS CLOSED"}
+        </h1>
+        {onlineOnly ? (
+          <p className="mt-3 text-zb-cream/70">
+            {closureLabel ? `${closureLabel}. ` : ""}Online ordering is paused
+            right now, but you&apos;re welcome to visit us in person. Your cart
+            is saved
+            {reopen ? ` — we expect to reopen online around ${reopen}` : ""}.
           </p>
+        ) : (
+          <>
+            <p className="mt-3 text-zb-cream/70">
+              Ordering is paused outside our operating hours. Your cart is saved —
+              come back when we&apos;re open and check out then.
+            </p>
+            <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
+              {STORE_HOURS_SUMMARY.map((row) => (
+                <div key={row.days} className="flex items-center justify-between gap-4">
+                  <dt className="font-semibold text-zb-cream">{row.days}</dt>
+                  <dd className="font-mono-tabular text-zb-cream/70">{row.hours}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
         )}
-        <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
-          {STORE_HOURS_SUMMARY.map((row) => (
-            <div key={row.days} className="flex items-center justify-between gap-4">
-              <dt className="font-semibold text-zb-cream">{row.days}</dt>
-              <dd className="font-mono-tabular text-zb-cream/70">{row.hours}</dd>
-            </div>
-          ))}
-        </dl>
         <Link href="/menu" className="mt-7 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft">
           Browse the menu
         </Link>
