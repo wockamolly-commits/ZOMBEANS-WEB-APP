@@ -76,4 +76,3 @@ end;
 $$;
 
 grant execute on function get_store_availability() to anon, authenticated;
-grant execute on function refresh_expired_store_availability() to anon, authenticated;

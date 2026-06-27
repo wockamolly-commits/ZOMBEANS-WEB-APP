@@ -32,6 +32,27 @@ export function getCloseHour(day: number): number {
   return isWeekend ? STORE_CLOSE_WEEKEND_HOUR : STORE_CLOSE_WEEKDAY_HOUR;
 }
 
+// End of today's operating window in Asia/Manila, as a UTC ISO string.
+// Manila has no DST (UTC+8), so a fixed offset is safe for the conversion.
+export function endOfSlotISO(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: MANILA_TZ,
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const dayMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  const closeHour = getCloseHour(dayMap[get("weekday")] ?? now.getDay());
+  const iso = `${get("year")}-${get("month")}-${get("day")}T${String(
+    closeHour
+  ).padStart(2, "0")}:00:00+08:00`;
+  return new Date(iso).toISOString();
+}
+
 // Resolve the current wall-clock in Manila regardless of the runtime's own
 // timezone, so the open/closed decision is identical on the server and in the
 // browser of an overseas customer.

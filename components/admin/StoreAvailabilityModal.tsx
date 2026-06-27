@@ -9,6 +9,7 @@ import {
   setStoreClosed,
   setStoreOpen,
 } from "@/app/workspace/availability/actions";
+import { endOfSlotISO } from "@/lib/checkout";
 import {
   HIGH_DEMAND_DEFAULT_MINUTES,
   HIGH_DEMAND_MAX_MINUTES,
@@ -305,7 +306,7 @@ export function StoreAvailabilityModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setUntil("")}
+                      onClick={() => setUntil(endOfSlotISO())}
                       className="rounded-full border border-zb-sage/35 px-4 py-1.5 text-sm text-zb-cream transition hover:border-zb-bone"
                     >
                       End of slot

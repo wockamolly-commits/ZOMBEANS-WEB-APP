@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 import { requireStaffPermission } from "@/lib/admin";
-import { getCloseHour } from "@/lib/checkout";
+import { endOfSlotISO } from "@/lib/checkout";
 import {
   clampHighDemandMinutes,
   HIGH_DEMAND_DEFAULT_MINUTES,
@@ -43,11 +43,11 @@ function refresh() {
 }
 
 async function audit(
+  admin: Awaited<ReturnType<typeof createAdminSessionClient>>,
   actorId: string,
   action: string,
   diff: Record<string, unknown>
 ) {
-  const admin = await createAdminSessionClient();
   const { error } = await admin.from("audit_logs").insert({
     actor_profile_id: actorId,
     action,
@@ -56,28 +56,6 @@ async function audit(
     diff,
   });
   if (error) console.error("[store-availability] audit failed:", error.message);
-}
-
-// End of today's operating window in Asia/Manila, as an ISO timestamp.
-function endOfSlotISO(now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
-    weekday: "short",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(now);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const dayMap: Record<string, number> = {
-    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
-  };
-  const closeHour = getCloseHour(dayMap[get("weekday")] ?? now.getDay());
-  // Build the Manila wall-clock close time, then convert to UTC by comparing
-  // the Manila offset. Manila has no DST (UTC+8), so a fixed offset is safe.
-  const iso = `${get("year")}-${get("month")}-${get("day")}T${String(
-    closeHour
-  ).padStart(2, "0")}:00:00+08:00`;
-  return new Date(iso).toISOString();
 }
 
 export async function setStoreOpen(): Promise<StoreActionResult> {
@@ -96,7 +74,7 @@ export async function setStoreOpen(): Promise<StoreActionResult> {
     })
     .eq("id", 1);
   if (error) return { ok: false, error: "Could not reopen the store." };
-  await audit(profile.id, "store.opened", { accepting_orders: true });
+  await audit(admin, profile.id, "store.opened", { accepting_orders: true });
   refresh();
   return { ok: true };
 }
@@ -137,7 +115,7 @@ export async function setStoreClosed(
     })
     .eq("id", 1);
   if (error) return { ok: false, error: "Could not close the store." };
-  await audit(profile.id, "store.closed", {
+  await audit(admin, profile.id, "store.closed", {
     closure_reason_code: code,
     closed_until: closedUntil,
   });
@@ -163,7 +141,7 @@ export async function setHighDemand(
       })
       .eq("id", 1);
     if (error) return { ok: false, error: "Could not update high-demand mode." };
-    await audit(profile.id, "store.high_demand_off", {});
+    await audit(admin, profile.id, "store.high_demand_off", {});
     refresh();
     return { ok: true };
   }
@@ -195,7 +173,7 @@ export async function setHighDemand(
     })
     .eq("id", 1);
   if (error) return { ok: false, error: "Could not update high-demand mode." };
-  await audit(profile.id, "store.high_demand_on", { minutes, until });
+  await audit(admin, profile.id, "store.high_demand_on", { minutes, until });
   refresh();
   return { ok: true };
 }

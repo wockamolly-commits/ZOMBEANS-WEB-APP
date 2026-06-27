@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  HIGH_DEMAND_DEFAULT_MINUTES,
   clampHighDemandMinutes,
   closureLabel,
   resolveStoreAvailability,
@@ -28,6 +29,12 @@ describe("clampHighDemandMinutes", () => {
   it("passes through in-range values", () => {
     expect(clampHighDemandMinutes(20)).toBe(20);
   });
+  it("returns HIGH_DEMAND_DEFAULT_MINUTES for NaN", () => {
+    expect(clampHighDemandMinutes(NaN)).toBe(HIGH_DEMAND_DEFAULT_MINUTES);
+  });
+  it("rounds 7.6 to 8 (in-range)", () => {
+    expect(clampHighDemandMinutes(7.6)).toBe(8);
+  });
 });
 
 describe("closureLabel", () => {
@@ -39,6 +46,9 @@ describe("closureLabel", () => {
   });
   it("returns null when open", () => {
     expect(closureLabel(null, null)).toBeNull();
+  });
+  it("falls back to Temporarily closed for custom with null note", () => {
+    expect(closureLabel("custom", null)).toBe("Temporarily closed");
   });
 });
 
