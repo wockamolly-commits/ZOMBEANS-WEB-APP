@@ -1,6 +1,7 @@
 import { Clock3, ShieldCheck } from "lucide-react";
 import { RevokeStaffAccessForm } from "@/components/admin/RevokeStaffAccessForm";
 import { StaffInviteForm } from "@/components/admin/StaffInviteForm";
+import { StaffPermissionsForm } from "@/components/admin/StaffPermissionsForm";
 import { requireSuperAdmin } from "@/lib/admin";
 import { getStaffManagementData } from "@/lib/staff-invitations";
 import { STAFF_ROLES } from "@/lib/staff-roles";
@@ -49,27 +50,39 @@ export default async function TeamPage() {
             return (
               <div
                 key={member.id}
-                className="flex flex-col gap-3 border-b border-zb-sage/20 bg-zb-primary-strong/45 p-4 last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                className="border-b border-zb-sage/20 bg-zb-primary-strong/45 p-4 last:border-b-0"
               >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{member.display_name}</p>
-                    <span className="rounded-full bg-zb-bone/10 px-2 py-0.5 text-[10px] font-bold uppercase text-zb-bone">
-                      {roleLabel}
-                    </span>
-                    {!member.is_active && (
-                      <span className="text-xs text-zb-danger">Revoked</span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{member.display_name}</p>
+                      <span className="rounded-full bg-zb-bone/10 px-2 py-0.5 text-[10px] font-bold uppercase text-zb-bone">
+                        {roleLabel}
+                      </span>
+                      {!member.is_active && (
+                        <span className="text-xs text-zb-danger">Revoked</span>
+                      )}
+                    </div>
+                    {member.full_name && member.full_name !== member.display_name && (
+                      <p className="text-sm text-zb-cream/70">{member.full_name}</p>
                     )}
+                    <p className="text-sm text-zb-cream/55">{member.email}</p>
                   </div>
-                  <p className="text-sm text-zb-cream/55">{member.email}</p>
+                  {member.id === current.id ? (
+                    <span className="text-xs text-zb-cream/45">Your account</span>
+                  ) : (
+                    <RevokeStaffAccessForm profileId={member.id} />
+                  )}
                 </div>
-                {member.id === current.id ? (
-                  <span className="text-xs text-zb-cream/45">
-                    Your account
-                  </span>
-                ) : (
-                  <RevokeStaffAccessForm profileId={member.id} />
-                )}
+                {member.role !== "admin" &&
+                  member.is_active &&
+                  member.id !== current.id && (
+                    <StaffPermissionsForm
+                      profileId={member.id}
+                      staffRole={member.staff_role}
+                      overrides={member.permission_overrides}
+                    />
+                  )}
               </div>
             );
           })}

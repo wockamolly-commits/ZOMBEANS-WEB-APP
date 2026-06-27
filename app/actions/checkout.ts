@@ -42,8 +42,14 @@ export async function placeOrder(
     ? await getTeamProfileForUser(adminSupabase, adminUser.id)
     : null;
 
+  const customerSupabase = await createClient();
+  const {
+    data: { user: customerUser },
+  } = await customerSupabase.auth.getUser();
+
   const isSuperAdmin = operationsProfile?.role === "admin";
-  if (operationsProfile?.role === "staff") {
+  const useSuperAdminCheckout = !customerUser && isSuperAdmin;
+  if (!customerUser && operationsProfile?.role === "staff") {
     return {
       ok: false,
       error:
@@ -51,8 +57,8 @@ export async function placeOrder(
     };
   }
 
-  const isTestOrder = isSuperAdmin && input.isTestOrder === true;
-  const supabase = isSuperAdmin ? adminSupabase : await createClient();
+  const isTestOrder = useSuperAdminCheckout && input.isTestOrder === true;
+  const supabase = useSuperAdminCheckout ? adminSupabase : customerSupabase;
 
   if (!isStoreOpen() && !isTestOrder) {
     return {
@@ -62,16 +68,11 @@ export async function placeOrder(
     };
   }
 
-  if (input.paymentMethod === "cash") {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return {
-        ok: false,
-        error: "Please sign in or create an account to pay with cash.",
-      };
-    }
+  if (input.paymentMethod === "cash" && !customerUser && !useSuperAdminCheckout) {
+    return {
+      ok: false,
+      error: "Please sign in or create an account to pay with cash.",
+    };
   }
 
   const payload = {
@@ -111,7 +112,7 @@ export async function placeOrder(
     })),
   };
 
-  const { data, error } = isSuperAdmin
+  const { data, error } = useSuperAdminCheckout
     ? await supabase.rpc("super_admin_place_order", {
         p_payload: payload,
         p_is_test: isTestOrder,
@@ -119,7 +120,10 @@ export async function placeOrder(
     : await supabase.rpc("place_order", { p_payload: payload });
 
   if (error) {
-    const message = {
+    const inactiveMatch = error.message.match(/^ITEM_INACTIVE:(.+)$/);
+    const message = inactiveMatch
+      ? `${inactiveMatch[1]} is unavailable right now. Please remove it from your cart or choose another item.`
+      : {
       AUTH_REQUIRED: "Please sign in to place a delivery order.",
       STAFF_ORDERING_FORBIDDEN:
         "Staff accounts cannot place webstore orders. Please use a separate customer account for personal purchases.",

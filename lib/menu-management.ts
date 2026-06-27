@@ -19,6 +19,7 @@ type ItemRow = Omit<ManagedMenuItem, "variations" | "option_links">;
 
 export async function getMenuManagementData(): Promise<MenuManagementData> {
   const admin = await createAdminSessionClient();
+  await admin.rpc("refresh_expired_menu_item_availability");
   const [
     categoriesResult,
     itemsResult,
@@ -35,7 +36,7 @@ export async function getMenuManagementData(): Promise<MenuManagementData> {
     admin
       .from("menu_items")
       .select(
-        "id, category_id, slug, name, description, image_url, is_bestseller, is_active, sort_order"
+        "id, category_id, slug, name, description, image_url, is_bestseller, is_active, unavailability_kind, unavailable_until, sort_order"
       )
       .order("sort_order")
       .order("name"),

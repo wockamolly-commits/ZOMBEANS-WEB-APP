@@ -35,6 +35,8 @@ function friendly(message: string | undefined): string {
   if (message.includes("PAYMENT_NOT_FOUND")) return "No payment to record.";
   if (message.includes("PAYMENT_REQUIRED"))
     return "Wait for the online payment confirmation before completing this order.";
+  if (message.includes("PAYMENT_STAGE_LOCKED"))
+    return "Payment can only be marked paid once the order is ready.";
   if (message.includes("DELIVERY_ONLY"))
     return "Riders can only be assigned to delivery orders.";
   if (message.includes("ASSIGNMENT_LOCKED"))

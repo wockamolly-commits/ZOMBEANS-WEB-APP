@@ -24,6 +24,8 @@ export type ManagedMenuItem = {
   image_url: string | null;
   is_bestseller: boolean;
   is_active: boolean;
+  unavailability_kind: "today" | "indefinite" | "until" | null;
+  unavailable_until: string | null;
   sort_order: number;
   variations: MenuVariation[];
   option_links: MenuItemOptionLink[];

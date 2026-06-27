@@ -40,6 +40,24 @@ export async function resolveAdminEmailAccess(
   return invitation.data ? "invited" : null;
 }
 
+export async function hasPendingStaffInvitation(
+  email: string,
+  invitationId: string
+): Promise<boolean> {
+  const normalized = normalizeEmail(email);
+  const admin = createAdminClient();
+  const invitation = await admin
+    .from("staff_invitations")
+    .select("id")
+    .eq("id", invitationId)
+    .eq("status", "pending")
+    .ilike("email", normalized)
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+  if (invitation.error) throw invitation.error;
+  return Boolean(invitation.data);
+}
+
 export async function provisionConfiguredSuperAdmin(
   user: User
 ): Promise<boolean> {
@@ -65,6 +83,7 @@ export async function provisionConfiguredSuperAdmin(
     id: user.id,
     role: "admin",
     display_name: displayName,
+    full_name: displayName,
     is_active: true,
   });
   if (result.error) throw result.error;

@@ -7,11 +7,14 @@ Supabase project must not render `{{ .ConfirmationURL }}` in that template.
 
 ## Dashboard Setting
 
-In Supabase Dashboard, update all auth templates that can be used by this flow:
+In Supabase Dashboard, update the auth templates by purpose:
+
+### OTP code templates
+
+Use the OTP template for:
 
 - Magic Link
 - Confirm sign up
-- Invite user
 
 1. Open Authentication > Emails > Templates.
 2. Select one of the templates above.
@@ -52,7 +55,26 @@ Your Zombeans sign-in code
 ```
 
 Use a staff-specific subject such as `Your Zombeans staff verification code`
-for the Invite user template if desired.
+if the dashboard allows a separate subject for staff code emails.
+
+### Staff invitation template
+
+Use Supabase Auth's Invite user template only for the first staff onboarding
+email. Paste the contents of:
+
+`supabase/email-templates/staff-invitation.html`
+
+into Authentication > Emails > Templates > Invite user.
+
+Suggested subject:
+
+```text
+Your Zombeans staff invitation
+```
+
+This template contains `{{ .ConfirmationURL }}` and intentionally does not
+contain `{{ .Token }}`. The 6-digit code is requested only after the staff
+member opens the invitation link and lands on `/login`.
 
 The app no longer accepts `/auth/confirm` link verification. If a user opens an
 old link, they are sent back to `/login` to request a 6-digit code.

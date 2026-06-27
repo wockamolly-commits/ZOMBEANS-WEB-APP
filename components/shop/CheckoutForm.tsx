@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Banknote,
   Bike,
@@ -32,6 +33,7 @@ import {
 import { formatPeso } from "@/lib/peso";
 import { placeOrder, type PlaceOrderInput } from "@/app/actions/checkout";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
+import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import type { SavedAddress } from "@/lib/auth";
 
 const inputClass =
@@ -75,13 +77,47 @@ export function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isTestOrder, setIsTestOrder] = useState(false);
+  const [browserLoggedIn, setBrowserLoggedIn] = useState<boolean | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
   const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
     generatePickupSlots()
   );
   // Start optimistically open to avoid a closed flash during hydration; the
   // effect below corrects it on mount and keeps it current.
   const [storeOpen, setStoreOpen] = useState(true);
+
+  useEffect(() => {
+    if (operationsRole) return;
+
+    let active = true;
+    const supabase = createBrowserClient();
+    const syncLoggedIn = (loggedIn: boolean) => {
+      if (!active) return;
+      setBrowserLoggedIn(loggedIn);
+      const refreshKey = "zb-checkout-auth-refresh";
+      if (loggedIn === isLoggedIn) {
+        window.sessionStorage.removeItem(refreshKey);
+      } else if (!window.sessionStorage.getItem(refreshKey)) {
+        window.sessionStorage.setItem(refreshKey, "1");
+        router.refresh();
+      }
+    };
+
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      syncLoggedIn(Boolean(user));
+    });
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncLoggedIn(Boolean(session?.user));
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [isLoggedIn, operationsRole, router]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setLines(readCart()), 0);
@@ -182,10 +218,12 @@ export function CheckoutForm({
     );
   }
 
+  const effectiveIsLoggedIn = operationsRole
+    ? isLoggedIn
+    : browserLoggedIn ?? isLoggedIn;
   const isTakeOut = mode === "pickup" || mode === "delivery";
-  // Cash orders must be tied to an account for tracking and accountability —
-  // this applies to every service mode, not just delivery.
-  const requiresAccount = !isLoggedIn && paymentMethod === "cash";
+  // Cash orders must be tied to an account for tracking and accountability.
+  const requiresAccount = !effectiveIsLoggedIn && paymentMethod === "cash";
   const subtotal = getCartSubtotal(lines);
   const deliveryFee = mode === "delivery" ? getDeliveryFeeCents(deliveryTier) : 0;
   const total = subtotal + deliveryFee;
@@ -226,7 +264,7 @@ export function CheckoutForm({
       lines,
       pickupTime: mode === "pickup" ? validPickupTime ?? undefined : undefined,
       delivery:
-        mode === "delivery" && isLoggedIn
+        mode === "delivery" && effectiveIsLoggedIn
           ? (() => {
               const saved = savedAddresses.find((a) => a.id === selectedAddressId);
               if (saved) {
@@ -312,7 +350,7 @@ export function CheckoutForm({
             </label>
           </div>
         )}
-        {isLoggedIn ? (
+        {effectiveIsLoggedIn ? (
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm">
             <span className="text-zb-cream/70">
               Signed in{email ? <> as <span className="font-medium text-zb-cream">{email}</span></> : ""}.
@@ -499,7 +537,7 @@ export function CheckoutForm({
               </label>
             )}
 
-            {mode === "delivery" && !isLoggedIn && !requiresAccount && (
+            {mode === "delivery" && !effectiveIsLoggedIn && !requiresAccount && (
               <div className="sm:col-span-2 rounded-2xl border border-zb-bone/40 bg-zb-bone/10 p-5">
                 <p className="flex items-center gap-2 font-semibold text-zb-bone">
                   <LogIn className="size-4" /> Delivery needs an account
@@ -513,7 +551,7 @@ export function CheckoutForm({
                 </Link>
               </div>
             )}
-            {mode === "delivery" && isLoggedIn && (
+            {mode === "delivery" && effectiveIsLoggedIn && (
               <>
                 {savedAddresses.length > 0 && (
                   <fieldset className="sm:col-span-2">
@@ -697,7 +735,7 @@ export function CheckoutForm({
         </div>
 
         {!reviewed ? (
-          <button type="submit" disabled={requiresAccount || deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !isLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="submit" disabled={requiresAccount || deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !effectiveIsLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
             Review order <Check className="size-4" />
           </button>
         ) : (

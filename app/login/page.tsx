@@ -19,8 +19,10 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({
   searchParams,
 }: PageProps<"/login">) {
-  const requestedNext = safeNextPath((await searchParams).next);
+  const params = await searchParams;
+  const requestedNext = safeNextPath(params.next);
   const isOperationsSignIn = isAdminSurfacePath(requestedNext);
+  const isStaffInvite = params.invite === "staff";
   const adminSupabase = await createAdminSessionClient();
   const {
     data: { user: adminUser },
@@ -40,9 +42,13 @@ export default async function LoginPage({
       <Header />
       <DoodleBg className="flex-1">
         <main className="mx-auto w-full max-w-md px-4 py-16 sm:px-6">
-          <h1 className="font-display text-5xl text-zb-cream">SIGN IN</h1>
+          <h1 className="font-display text-5xl text-zb-cream">
+            {isStaffInvite ? "VERIFY INVITE" : "SIGN IN"}
+          </h1>
           <p className="mt-3 text-zb-cream/65">
-            Enter your email and we&apos;ll send a secure 6-digit sign-in code.
+            {isStaffInvite
+              ? "We will email your 6-digit staff verification code now."
+              : "Enter your email and we'll send a secure 6-digit sign-in code."}
           </p>
           <Suspense fallback={null}>
             <LoginForm />
