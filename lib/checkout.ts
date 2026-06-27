@@ -100,10 +100,15 @@ const slotFormatter = new Intl.DateTimeFormat("en-PH", {
 
 // Slots are derived from `now`, so calling this repeatedly (e.g. on an
 // interval) keeps the list pruned to genuinely upcoming pickup times.
-export function generatePickupSlots(now = new Date()): PickupSlot[] {
-  // Earliest valid pickup honours the prep estimate; the grid then rounds
-  // up to the next slot boundary.
-  const earliest = new Date(now.getTime() + DEFAULT_PREP_MINUTES * 60_000);
+export function generatePickupSlots(
+  now = new Date(),
+  extraPrepMinutes = 0
+): PickupSlot[] {
+  // Earliest valid pickup honours the prep estimate (plus any high-demand
+  // buffer); the grid then rounds up to the next slot boundary.
+  const earliest = new Date(
+    now.getTime() + (DEFAULT_PREP_MINUTES + extraPrepMinutes) * 60_000
+  );
   earliest.setSeconds(0, 0);
 
   const first = new Date(earliest);
