@@ -4,6 +4,7 @@ import { Footer } from "@/components/shared/Footer";
 import { Header } from "@/components/shared/Header";
 import { getCurrentUser, getCustomerProfile, getSavedAddresses } from "@/lib/auth";
 import { getStaffProfile } from "@/lib/admin";
+import { getStoreAvailability } from "@/lib/store-availability-data";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export const metadata = { title: "Checkout" };
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CheckoutPage() {
   const operationsProfile = await getStaffProfile();
+  const storeAvailability = await getStoreAvailability();
   const user = await getCurrentUser();
   const adminSupabase = operationsProfile
     ? await createAdminSessionClient()
@@ -46,6 +48,10 @@ export default async function CheckoutPage() {
             profile={profile ?? { display_name: null, phone: null }}
             savedAddresses={savedAddresses}
             operationsRole={user ? null : operationsProfile?.role ?? null}
+            webstoreOpen={storeAvailability.isOpen}
+            closureLabel={storeAvailability.closureLabel}
+            closedUntil={storeAvailability.closedUntil}
+            prepBufferMinutes={storeAvailability.prepBufferMinutes}
           />
         </main>
       </DoodleBg>

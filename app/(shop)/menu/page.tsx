@@ -4,9 +4,11 @@ import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
+import { StoreClosedNotice } from "@/components/shop/StoreClosedNotice";
 import { MENU_GROUPS, getGroupItems } from "@/lib/menu-static";
 
 export const metadata = { title: "Our Menu" };
+export const dynamic = "force-dynamic";
 
 export default function MenuLandingPage() {
   return (
@@ -27,6 +29,7 @@ export default function MenuLandingPage() {
           </section>
 
           <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24 space-y-8">
+            <StoreClosedNotice />
             <KitchenClosingBanner />
             <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {MENU_GROUPS.map((group) => {

@@ -1,10 +1,12 @@
 import { CartView } from "@/components/shop/CartView";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
+import { StoreClosedNotice } from "@/components/shop/StoreClosedNotice";
 import { DoodleBg } from "@/components/shared/DoodleBg";
 import { Footer } from "@/components/shared/Footer";
 import { Header } from "@/components/shared/Header";
 
 export const metadata = { title: "Your Cart" };
+export const dynamic = "force-dynamic";
 
 export default function CartPage() {
   return (
@@ -20,6 +22,7 @@ export default function CartPage() {
               CART
             </h1>
           </div>
+          <StoreClosedNotice />
           <KitchenClosingBanner />
           <CartView />
         </main>

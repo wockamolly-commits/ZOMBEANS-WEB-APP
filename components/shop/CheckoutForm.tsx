@@ -59,12 +59,20 @@ export function CheckoutForm({
   profile,
   savedAddresses,
   operationsRole,
+  webstoreOpen,
+  closureLabel,
+  closedUntil,
+  prepBufferMinutes,
 }: {
   isLoggedIn: boolean;
   email: string | null;
   profile: { display_name: string | null; phone: string | null };
   savedAddresses: SavedAddress[];
   operationsRole: "admin" | "staff" | null;
+  webstoreOpen: boolean;
+  closureLabel: string | null;
+  closedUntil: string | null;
+  prepBufferMinutes: number;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
@@ -81,7 +89,7 @@ export function CheckoutForm({
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
-    generatePickupSlots()
+    generatePickupSlots(new Date(), prepBufferMinutes)
   );
   // Start optimistically open to avoid a closed flash during hydration; the
   // effect below corrects it on mount and keeps it current.
@@ -128,13 +136,13 @@ export function CheckoutForm({
   // open, so ordering re-enables on its own the moment the café opens.
   useEffect(() => {
     const refresh = () => {
-      setPickupSlots(generatePickupSlots());
+      setPickupSlots(generatePickupSlots(new Date(), prepBufferMinutes));
       setStoreOpen(isStoreOpen());
     };
     refresh();
     const id = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [prepBufferMinutes]);
 
   if (operationsRole === "staff") {
     return (
@@ -182,9 +190,10 @@ export function CheckoutForm({
     );
   }
 
-  // Ordering is only available during business hours. This screen re-enables
-  // itself automatically once the café opens (see the refresh interval above).
-  if (!storeOpen && !isTestOrder) {
+  // Ordering is only available during business hours, and also when the
+  // webstore is not manually closed. This screen re-enables itself
+  // automatically once the café opens (see the refresh interval above).
+  if ((!storeOpen || !webstoreOpen) && !isTestOrder) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <Clock3 className="mx-auto size-12 text-zb-bone" />
@@ -193,6 +202,19 @@ export function CheckoutForm({
           Ordering is paused outside our operating hours. Your cart is saved —
           come back when we&apos;re open and check out then.
         </p>
+        {!webstoreOpen && (
+          <p className="mt-2 text-sm text-zb-bone">
+            {closureLabel ?? "Online ordering is paused right now."}
+            {closedUntil
+              ? ` Reopening around ${new Intl.DateTimeFormat("en-PH", {
+                  weekday: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "Asia/Manila",
+                }).format(new Date(closedUntil))}.`
+              : ""}
+          </p>
+        )}
         <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
           {STORE_HOURS_SUMMARY.map((row) => (
             <div key={row.days} className="flex items-center justify-between gap-4">
