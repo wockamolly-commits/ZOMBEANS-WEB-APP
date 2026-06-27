@@ -21,6 +21,7 @@ export type StaffPermission =
   | "menu:availability"
   | "menu:configure"
   | "team:manage"
+  | "store:availability"
   | "deliveries:view"
   | "deliveries:manage";
 
@@ -47,6 +48,7 @@ const PERMISSION_KEYS: Record<StaffPermission, true> = {
   "menu:availability": true,
   "menu:configure": true,
   "team:manage": true,
+  "store:availability": true,
   "deliveries:view": true,
   "deliveries:manage": true,
 };
@@ -61,7 +63,7 @@ export type GrantablePermission = {
   permission: StaffPermission;
   label: string;
   description: string;
-  section: "Dashboard" | "Orders" | "Menu";
+  section: "Dashboard" | "Orders" | "Menu" | "Store";
 };
 
 // Permissions a Super Admin may grant/revoke per staff member. `team:manage`
@@ -105,6 +107,13 @@ export const GRANTABLE_PERMISSIONS: readonly GrantablePermission[] = [
     label: "Configure menu",
     description:
       "Add, edit, delete, and link products, categories, and options.",
+  },
+  {
+    permission: "store:availability",
+    section: "Store",
+    label: "Manage store availability",
+    description:
+      "Open or close the webstore and toggle high-demand mode.",
   },
 ];
 
