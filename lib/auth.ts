@@ -10,7 +10,10 @@ export type SavedAddress = {
   barangay: string | null;
   landmark: string | null;
   city: string;
-  tier: "tier-2" | "tier-4" | "tier-6";
+  tier: "tier-2" | "tier-4" | "tier-6" | null;
+  lat: number | null;
+  lng: number | null;
+  google_place_id: string | null;
   is_default: boolean;
 };
 
@@ -40,7 +43,9 @@ export async function getSavedAddresses(): Promise<SavedAddress[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("customer_addresses")
-    .select("id, label, street, barangay, landmark, city, tier, is_default")
+    .select(
+      "id, label, street, barangay, landmark, city, tier, lat, lng, google_place_id, is_default"
+    )
     .eq("user_id", user.id)
     .order("is_default", { ascending: false })
     .order("created_at", { ascending: true });

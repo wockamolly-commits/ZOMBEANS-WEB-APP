@@ -27,7 +27,6 @@ import {
   type CartLine,
 } from "@/lib/cart";
 import {
-  DELIVERY_TIERS,
   generatePickupSlots,
   getDeliveryFeeCents,
   isStoreOpen,
@@ -37,7 +36,12 @@ import {
 } from "@/lib/checkout";
 import { formatPeso } from "@/lib/peso";
 import { placeOrder, type PlaceOrderInput } from "@/app/actions/checkout";
+import {
+  DeliveryMapPicker,
+  type DeliveryDetails,
+} from "@/components/shop/DeliveryMapPicker";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
+import type { DeliveryTier } from "@/lib/delivery";
 import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import type { SavedAddress } from "@/lib/auth";
 
@@ -70,6 +74,12 @@ export function CheckoutForm({
   prepBufferMinutes,
   physicalOpen,
   physicalLabel,
+  mapsEnabled,
+  mapsApiKey,
+  storeLat,
+  storeLng,
+  deliveryTiers,
+  deliveryMaxKm,
 }: {
   isLoggedIn: boolean;
   email: string | null;
@@ -82,13 +92,19 @@ export function CheckoutForm({
   prepBufferMinutes: number;
   physicalOpen: boolean;
   physicalLabel: string | null;
+  mapsEnabled: boolean;
+  mapsApiKey: string | null;
+  storeLat: number;
+  storeLng: number;
+  deliveryTiers: DeliveryTier[];
+  deliveryMaxKm: number;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
   const [pickupTime, setPickupTime] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] =
     useState<PlaceOrderInput["paymentMethod"]>("cash");
-  const [deliveryTier, setDeliveryTier] = useState("");
+  const [mapDetails, setMapDetails] = useState<DeliveryDetails | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [reviewed, setReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -271,7 +287,21 @@ export function CheckoutForm({
   // Cash orders must be tied to an account for tracking and accountability.
   const requiresAccount = !effectiveIsLoggedIn && paymentMethod === "cash";
   const subtotal = getCartSubtotal(lines);
-  const deliveryFee = mode === "delivery" ? getDeliveryFeeCents(deliveryTier) : 0;
+  // Delivery is Maps-only. Fee preview comes from the server-confirmed map
+  // pick, or for a saved address that already has coordinates, its stored
+  // server-derived tier. place_order always re-derives the charge from coords.
+  const savedSelected = savedAddresses.find((a) => a.id === selectedAddressId);
+  const savedHasCoords =
+    savedSelected != null && savedSelected.lat != null && savedSelected.lng != null;
+  const deliveryFee =
+    mode === "delivery"
+      ? mapDetails?.feeCents ??
+        (savedHasCoords ? getDeliveryFeeCents(savedSelected.tier ?? "") : 0)
+      : 0;
+  // Ready when a saved address already has coordinates, or the map pin produced
+  // an in-zone quote (mapDetails is set to null on out-of-zone by the picker).
+  const deliveryReady =
+    mode !== "delivery" || savedHasCoords || mapDetails !== null;
   const total = subtotal + deliveryFee;
   // Treat an expired selection as empty without synchronously mutating state
   // from an effect. The next explicit selection replaces the stale value.
@@ -313,20 +343,33 @@ export function CheckoutForm({
         mode === "delivery" && effectiveIsLoggedIn
           ? (() => {
               const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-              if (saved) {
+              // A re-pin (mapDetails) wins; otherwise use the saved address's
+              // stored coordinates.
+              if (
+                saved &&
+                saved.lat != null &&
+                saved.lng != null &&
+                mapDetails === null
+              ) {
                 return {
                   street: saved.street,
                   barangay: saved.barangay ?? undefined,
+                  city: saved.city,
                   landmark: saved.landmark ?? undefined,
-                  tier: saved.tier,
+                  lat: saved.lat,
+                  lng: saved.lng,
+                  googlePlaceId: saved.google_place_id ?? undefined,
                 };
               }
-              if (deliveryTier && deliveryTier !== "out-of-zone") {
+              if (mapDetails) {
                 return {
-                  street: String(data.get("street") ?? ""),
-                  barangay: data.get("barangay") ? String(data.get("barangay")) : undefined,
+                  street: mapDetails.street,
+                  barangay: mapDetails.barangay ?? undefined,
+                  city: mapDetails.city,
                   landmark: data.get("landmark") ? String(data.get("landmark")) : undefined,
-                  tier: deliveryTier as "tier-2" | "tier-4" | "tier-6",
+                  lat: mapDetails.lat,
+                  lng: mapDetails.lng,
+                  googlePlaceId: mapDetails.googlePlaceId ?? undefined,
                 };
               }
               return undefined;
@@ -482,26 +525,33 @@ export function CheckoutForm({
                 How should we get it to you?
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {takeOutModes.map((entry) => {
-                  const Icon = entry.icon;
-                  const selected = mode === entry.value;
-                  return (
-                    <button
-                      key={entry.value}
-                      type="button"
-                      onClick={() => {
-                        setMode(entry.value);
-                        setReviewed(false);
-                      }}
-                      className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
-                    >
-                      <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
-                      <span className="mt-3 block font-semibold">{entry.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
-                    </button>
-                  );
-                })}
+                {takeOutModes
+                  .filter((entry) => mapsEnabled || entry.value !== "delivery")
+                  .map((entry) => {
+                    const Icon = entry.icon;
+                    const selected = mode === entry.value;
+                    return (
+                      <button
+                        key={entry.value}
+                        type="button"
+                        onClick={() => {
+                          setMode(entry.value);
+                          setReviewed(false);
+                        }}
+                        className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
+                      >
+                        <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
+                        <span className="mt-3 block font-semibold">{entry.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
+                      </button>
+                    );
+                  })}
               </div>
+              {!mapsEnabled && (
+                <p className="mt-3 px-1 text-xs leading-5 text-zb-cream/55">
+                  Delivery is temporarily unavailable - please choose Pickup.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -621,7 +671,7 @@ export function CheckoutForm({
                             checked={selectedAddressId === a.id}
                             onChange={() => {
                               setSelectedAddressId(a.id);
-                              setDeliveryTier(a.tier);
+                              setMapDetails(null);
                             }}
                             className="peer sr-only"
                           />
@@ -637,7 +687,7 @@ export function CheckoutForm({
                         type="button"
                         onClick={() => {
                           setSelectedAddressId("");
-                          setDeliveryTier("");
+                          setMapDetails(null);
                         }}
                         className="mt-3 text-sm font-semibold text-zb-bone hover:underline"
                       >
@@ -646,70 +696,28 @@ export function CheckoutForm({
                     )}
                   </fieldset>
                 )}
-                <label className="text-sm font-medium sm:col-span-2">
-                  Delivery address
-                  <textarea name="street" required={!selectedAddressId} autoComplete="street-address" onChange={() => selectedAddressId && setSelectedAddressId("")} className={textareaClass} placeholder="House number, street, subdivision" />
-                </label>
-                <label className="text-sm font-medium">
-                  Barangay
-                  <input name="barangay" required={!selectedAddressId} onChange={() => selectedAddressId && setSelectedAddressId("")} className={inputClass} placeholder="Barangay" />
-                </label>
-                <label className="text-sm font-medium">
-                  Landmark
-                  <input name="landmark" className={inputClass} placeholder="Near the red gate" />
-                </label>
-                <fieldset className="sm:col-span-2">
-                  <legend className="text-sm font-medium">Approximate distance from Zombeans</legend>
-                  <p className="mt-1 text-xs text-zb-cream/50">
-                    Pick the closest estimate. Maps will calculate this automatically once connected.
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {DELIVERY_TIERS.map((tier) => (
-                      <label key={tier.value} className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="deliveryTier"
-                          value={tier.value}
-                          required
-                          checked={deliveryTier === tier.value}
-                          onChange={(event) => setDeliveryTier(event.target.value)}
-                          className="peer sr-only"
-                        />
-                        <span className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 transition hover:border-zb-sage hover:bg-zb-sage/10 peer-checked:border-zb-bone peer-checked:bg-zb-bone/10 peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone">
-                          <span className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center rounded-full bg-zb-sage/15 text-zb-bone peer-checked:bg-zb-bone">
-                              <MapPin className="size-4" />
-                            </span>
-                            <span className="text-sm font-semibold">{tier.label}</span>
-                          </span>
-                          <span className="font-mono-tabular text-sm font-bold text-zb-bone">
-                            {formatPeso(tier.feeCents)}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                    <label className="cursor-pointer sm:col-span-2">
-                      <input
-                        type="radio"
-                        name="deliveryTier"
-                        value="out-of-zone"
-                        required
-                        checked={deliveryTier === "out-of-zone"}
-                        onChange={(event) => setDeliveryTier(event.target.value)}
-                        className="peer sr-only"
-                      />
-                      <span className="flex min-h-14 items-center justify-between rounded-xl border border-zb-sage/25 bg-zb-primary-dark/25 px-4 text-sm text-zb-cream/55 transition hover:border-zb-danger/50 peer-checked:border-zb-danger peer-checked:bg-zb-danger/10 peer-checked:text-zb-cream peer-focus-visible:ring-2 peer-focus-visible:ring-zb-danger">
-                        <span>More than 6 km away</span>
-                        <span className="text-xs font-semibold uppercase tracking-wider">Pickup only</span>
-                      </span>
+                {(!selectedAddressId || !savedHasCoords) && (
+                  <div className="sm:col-span-2 space-y-3">
+                    {selectedAddressId && !savedHasCoords && (
+                      <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+                        This saved address needs a pin - drop it on the map to
+                        confirm the delivery fee.
+                      </p>
+                    )}
+                    <DeliveryMapPicker
+                      apiKey={mapsApiKey!}
+                      storeLat={storeLat}
+                      storeLng={storeLng}
+                      tiers={deliveryTiers}
+                      maxKm={deliveryMaxKm}
+                      onChange={setMapDetails}
+                    />
+                    <label className="block text-sm font-medium">
+                      Landmark / delivery notes
+                      <input name="landmark" className={inputClass} placeholder="Near the red gate, unit number, etc." />
                     </label>
                   </div>
-                  {deliveryTier === "out-of-zone" && (
-                    <span className="mt-2 block rounded-lg border border-zb-danger/40 bg-zb-danger/10 p-3 text-xs leading-5 text-zb-cream">
-                      Sorry, that is outside our delivery zone. Switch to Pickup and your cart stays right here.
-                    </span>
-                  )}
-                </fieldset>
+                )}
               </>
             )}
 
@@ -792,7 +800,7 @@ export function CheckoutForm({
         </div>
 
         {!reviewed ? (
-          <button type="submit" disabled={requiresAccount || deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !effectiveIsLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="submit" disabled={requiresAccount || !deliveryReady || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !effectiveIsLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
             Review order <Check className="size-4" />
           </button>
         ) : (

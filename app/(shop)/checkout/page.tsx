@@ -13,9 +13,23 @@ export const dynamic = "force-dynamic";
 export default async function CheckoutPage() {
   const operationsProfile = await getStaffProfile();
   const storeAvailability = await getStoreAvailability();
+  const settingsClient = await createAdminSessionClient();
+  const { data: settingsRow } = await settingsClient
+    .from("app_settings")
+    .select("maps_enabled, store_lat, store_lng, delivery_fee_tiers, delivery_max_km")
+    .eq("id", 1)
+    .single();
+  const deliveryTiers = ((settingsRow?.delivery_fee_tiers as
+    | { max_km: number; fee_cents: number }[]
+    | null) ?? []).map((tier) => ({
+    maxKm: tier.max_km,
+    feeCents: tier.fee_cents,
+  }));
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsEnabled = Boolean(settingsRow?.maps_enabled) && Boolean(mapsApiKey);
   const user = await getCurrentUser();
   const adminSupabase = operationsProfile
-    ? await createAdminSessionClient()
+    ? settingsClient
     : null;
   const {
     data: { user: operationsUser },
@@ -54,6 +68,12 @@ export default async function CheckoutPage() {
             prepBufferMinutes={storeAvailability.prepBufferMinutes}
             physicalOpen={storeAvailability.physicalOpen}
             physicalLabel={storeAvailability.physicalLabel}
+            mapsEnabled={mapsEnabled}
+            mapsApiKey={mapsApiKey}
+            storeLat={Number(settingsRow?.store_lat ?? 10.4884825)}
+            storeLng={Number(settingsRow?.store_lng ?? 123.4111058)}
+            deliveryTiers={deliveryTiers}
+            deliveryMaxKm={Number(settingsRow?.delivery_max_km ?? 6)}
           />
         </main>
       </DoodleBg>
