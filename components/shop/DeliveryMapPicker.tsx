@@ -44,6 +44,14 @@ function pickComponent(
     ?.long_name ?? null;
 }
 
+function pickPlaceComponent(
+  components: google.maps.places.AddressComponent[] | undefined,
+  type: string
+): string | null {
+  return components?.find((component) => component.types.includes(type))
+    ?.longText ?? null;
+}
+
 export function DeliveryMapPicker({
   apiKey,
   storeLat,
@@ -60,7 +68,7 @@ export function DeliveryMapPicker({
   onChange: (details: DeliveryDetails | null) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const [ready, setReady] = useState(false);
@@ -147,12 +155,12 @@ export function DeliveryMapPicker({
 
   useEffect(() => {
     let cancelled = false;
-    const loader = new Loader({ apiKey, libraries: ["places", "marker"] });
+    const loader = new Loader({ apiKey, libraries: ["places"] });
 
     loader
       .load()
-      .then((google) => {
-        if (cancelled || !mapRef.current || !inputRef.current) return;
+      .then(async (google) => {
+        if (cancelled || !mapRef.current || !autocompleteRef.current) return;
 
         const center = { lat: storeLat, lng: storeLng };
         const map = new google.maps.Map(mapRef.current, {
@@ -165,33 +173,48 @@ export function DeliveryMapPicker({
         markerRef.current = marker;
         geocoderRef.current = new google.maps.Geocoder();
 
-        const autocomplete = new google.maps.places.Autocomplete(
-          inputRef.current,
-          {
-            fields: ["geometry", "address_components", "place_id", "name"],
-            componentRestrictions: { country: "ph" },
-          }
-        );
-        autocomplete.bindTo("bounds", map);
+        const { PlaceAutocompleteElement } =
+          (await google.maps.importLibrary("places")) as google.maps.PlacesLibrary;
+        const autocomplete = new PlaceAutocompleteElement();
+        autocomplete.placeholder = "Search your address or landmark";
+        autocomplete.includedRegionCodes = ["ph"];
+        autocomplete.locationBias = {
+          center,
+          radius: Math.max(maxKm * 1000, 5000),
+        };
+        autocomplete.className = "block w-full";
+        autocompleteRef.current.replaceChildren(autocomplete);
 
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (!place.geometry?.location) return;
+        autocomplete.addEventListener("gmp-select", async (event) => {
+          const { placePrediction } =
+            event as google.maps.places.PlacePredictionSelectEvent;
+          const place = placePrediction.toPlace();
+          await place.fetchFields({
+            fields: [
+              "addressComponents",
+              "displayName",
+              "formattedAddress",
+              "id",
+              "location",
+            ],
+          });
+          if (!place.location) return;
 
-          const lat = place.geometry.location.lat();
-          const lng = place.geometry.location.lng();
+          const lat = place.location.lat();
+          const lng = place.location.lng();
           map.setCenter({ lat, lng });
           map.setZoom(16);
           marker.setPosition({ lat, lng });
           partsRef.current = {
-            street: place.name ?? "",
+            street:
+              place.formattedAddress ?? place.displayName ?? partsRef.current.street,
             barangay:
-              pickComponent(place.address_components, "sublocality_level_1") ??
-              pickComponent(place.address_components, "neighborhood"),
+              pickPlaceComponent(place.addressComponents, "sublocality_level_1") ??
+              pickPlaceComponent(place.addressComponents, "neighborhood"),
             city:
-              pickComponent(place.address_components, "locality") ??
+              pickPlaceComponent(place.addressComponents, "locality") ??
               "San Carlos City",
-            placeId: place.place_id ?? null,
+            placeId: place.id ?? null,
           };
           void runQuote(lat, lng);
         });
@@ -224,11 +247,9 @@ export function DeliveryMapPicker({
 
   return (
     <div className="space-y-3">
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="Search your address or landmark"
-        className="h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-4 text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none focus:ring-2 focus:ring-zb-bone/20"
+      <div
+        ref={autocompleteRef}
+        className="min-h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-3 py-1 text-zb-primary-dark focus-within:border-zb-bone focus-within:outline-none focus-within:ring-2 focus-within:ring-zb-bone/20"
       />
       <div
         ref={mapRef}
