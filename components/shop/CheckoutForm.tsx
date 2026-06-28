@@ -20,7 +20,12 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Select } from "@base-ui/react/select";
-import { getCartSubtotal, readCart, type CartLine } from "@/lib/cart";
+import {
+  getCartSubtotal,
+  getModifierDisplayName,
+  readCart,
+  type CartLine,
+} from "@/lib/cart";
 import {
   DELIVERY_TIERS,
   generatePickupSlots,
@@ -63,6 +68,8 @@ export function CheckoutForm({
   closureLabel,
   closedUntil,
   prepBufferMinutes,
+  physicalOpen,
+  physicalLabel,
 }: {
   isLoggedIn: boolean;
   email: string | null;
@@ -73,6 +80,8 @@ export function CheckoutForm({
   closureLabel: string | null;
   closedUntil: string | null;
   prepBufferMinutes: number;
+  physicalOpen: boolean;
+  physicalLabel: string | null;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
@@ -258,6 +267,7 @@ export function CheckoutForm({
     ? isLoggedIn
     : browserLoggedIn ?? isLoggedIn;
   const isTakeOut = mode === "pickup" || mode === "delivery";
+  const dineInAvailable = physicalOpen;
   // Cash orders must be tied to an account for tracking and accountability.
   const requiresAccount = !effectiveIsLoggedIn && paymentMethod === "cash";
   const subtotal = getCartSubtotal(lines);
@@ -433,29 +443,38 @@ export function CheckoutForm({
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {topModes.map((entry) => {
-              const Icon = entry.icon;
-              const selected =
-                entry.value === "take_out" ? isTakeOut : mode === entry.value;
-              return (
-                <button
-                  key={entry.value}
-                  type="button"
-                  onClick={() => {
-                    // "Take Out" defaults to pickup; the sub-options below
-                    // let the customer switch to delivery.
-                    setMode(entry.value === "take_out" ? "pickup" : "dine_in");
-                    setReviewed(false);
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
-                >
-                  <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
-                  <span className="mt-3 block font-semibold">{entry.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
-                </button>
-              );
-            })}
+            {topModes
+              .filter((entry) => dineInAvailable || entry.value !== "dine_in")
+              .map((entry) => {
+                const Icon = entry.icon;
+                const selected =
+                  entry.value === "take_out" ? isTakeOut : mode === entry.value;
+                return (
+                  <button
+                    key={entry.value}
+                    type="button"
+                    onClick={() => {
+                      // "Take Out" defaults to pickup; the sub-options below
+                      // let the customer switch to delivery.
+                      setMode(entry.value === "take_out" ? "pickup" : "dine_in");
+                      setReviewed(false);
+                    }}
+                    className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
+                  >
+                    <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
+                    <span className="mt-3 block font-semibold">{entry.label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
+                  </button>
+                );
+              })}
           </div>
+
+          {!dineInAvailable && (
+            <p className="mt-3 rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+              {physicalLabel ? `${physicalLabel}. ` : ""}Dine-in is unavailable
+              while our cafe is closed. Pickup and delivery are still open.
+            </p>
+          )}
 
           {isTakeOut && (
             <div className="mt-3 rounded-2xl border border-zb-sage/20 bg-zb-primary-dark/25 p-3 sm:p-4">
@@ -751,7 +770,9 @@ export function CheckoutForm({
                 <p className="truncate text-xs text-zb-cream/45">{line.variationLabel}</p>
                 {line.modifiers?.length ? (
                   <p className="truncate text-[11px] text-zb-cream/35">
-                    {line.modifiers.map((modifier) => modifier.name).join(", ")}
+                    {line.modifiers
+                      .map((modifier) => getModifierDisplayName(modifier))
+                      .join(", ")}
                   </p>
                 ) : null}
                 {line.itemNote ? (

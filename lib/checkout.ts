@@ -53,6 +53,29 @@ export function endOfSlotISO(now: Date = new Date()): string {
   return new Date(iso).toISOString();
 }
 
+// A Manila wall-clock instant at `hour:00` on (today + dayOffset), as a UTC ISO
+// string. Manila has no DST (UTC+8), so day arithmetic on the midnight instant
+// is exact. dayOffset 1 = tomorrow, 2 = day after.
+export function manilaDateAtHour(
+  dayOffset: number,
+  hour: number,
+  now: Date = new Date()
+): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: MANILA_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const manilaMidnightToday = new Date(
+    `${get("year")}-${get("month")}-${get("day")}T00:00:00+08:00`
+  ).getTime();
+  return new Date(
+    manilaMidnightToday + (dayOffset * 24 + hour) * 3_600_000
+  ).toISOString();
+}
+
 // Resolve the current wall-clock in Manila regardless of the runtime's own
 // timezone, so the open/closed decision is identical on the server and in the
 // browser of an overseas customer.

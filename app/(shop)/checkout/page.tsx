@@ -52,6 +52,8 @@ export default async function CheckoutPage() {
             closureLabel={storeAvailability.closureLabel}
             closedUntil={storeAvailability.closedUntil}
             prepBufferMinutes={storeAvailability.prepBufferMinutes}
+            physicalOpen={storeAvailability.physicalOpen}
+            physicalLabel={storeAvailability.physicalLabel}
           />
         </main>
       </DoodleBg>

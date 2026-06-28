@@ -12,16 +12,22 @@ export function StoreAvailabilityControl({
 }) {
   const [open, setOpen] = useState(false);
 
-  const dot = !state.isOpen
+  const bothClosed = !state.isOpen && !state.physicalOpen;
+  const anyClosed = !state.isOpen || !state.physicalOpen;
+  const dot = anyClosed
     ? "bg-zb-danger"
     : state.highDemand
       ? "bg-amber-400"
       : "bg-emerald-400";
-  const label = !state.isOpen
+  const label = bothClosed
     ? "Closed"
-    : state.highDemand
-      ? "High demand"
-      : "Open";
+    : !state.isOpen
+      ? "Webstore closed"
+      : !state.physicalOpen
+        ? "Cafe closed"
+        : state.highDemand
+          ? "High demand"
+          : "Open";
 
   return (
     <>
