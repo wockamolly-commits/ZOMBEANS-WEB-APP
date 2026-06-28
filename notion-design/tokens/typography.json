@@ -1,0 +1,366 @@
+{
+  "families": [
+    "Noto Sans Arabic",
+    "NotionInter",
+    "iA Writer Mono"
+  ],
+  "scale": {
+    "heading-1": {
+      "fontFamily": "Noto Sans Arabic",
+      "fontSize": "80px",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "heading-2": {
+      "fontFamily": "Noto Sans Arabic",
+      "fontSize": "78px",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "heading-3": {
+      "fontFamily": "Noto Sans Arabic",
+      "fontSize": "61px",
+      "fontWeight": "700",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "body": {
+      "fontFamily": "NotionInter",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "caption": {
+      "fontFamily": "NotionInter",
+      "fontSize": "16px",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    },
+    "code": {
+      "fontFamily": "iA Writer Mono",
+      "fontSize": "14px",
+      "fontWeight": "400",
+      "lineHeight": null,
+      "source": "css"
+    }
+  },
+  "fontFaces": [
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Regular.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Regular.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Medium.woff2",
+      "format": "woff2",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Medium.woff",
+      "format": "woff",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-SemiBold.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-SemiBold.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Bold.woff2",
+      "format": "woff2",
+      "weight": "700"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/front-static/fonts/NotionInter-Bold.woff",
+      "format": "woff",
+      "weight": "700"
+    },
+    {
+      "family": "Noto Sans Arabic",
+      "src": "https://notion.com/front-static/fonts/noto-sans-arabic.woff2",
+      "format": "woff2",
+      "weight": "100"
+    },
+    {
+      "family": "Noto Sans Hebrew",
+      "src": "https://notion.com/front-static/fonts/noto-sans-hebrew.woff2",
+      "format": "woff2",
+      "weight": "100"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Italic.556b6a81.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Italic.77670713.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-MediumItalic.bc4c8878.woff2",
+      "format": "woff2",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-MediumItalic.43777ed6.woff",
+      "format": "woff",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBoldItalic.cb46786e.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBoldItalic.5ef1a0b4.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-BoldItalic.e4b84cf2.woff2",
+      "format": "woff2",
+      "weight": "700"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-BoldItalic.3df3bb10.woff",
+      "format": "woff",
+      "weight": "700"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-Regular-Web.d7bfb4be.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-Regular-Web.2cefb6ff.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-RegularItalic-Web.f823179b.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-RegularItalic-Web.fa2b7345.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-Bold-Web.98529464.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-Bold-Web.63193098.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-BoldItalic-Web.8907ab5f.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "Lyon Text",
+      "src": "https://notion.com/_next/static/media/LyonText-BoldItalic-Web.fa5375df.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Regular.bf09337b.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Regular.7554f0d4.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Italic.176fc5a8.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Italic.8eb35e9b.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Bold.a8b41a99.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-Bold.bbe5a5e6.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-BoldItalic.12c55f12.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "iA Writer Mono",
+      "src": "https://notion.com/_next/static/media/iAWriterMonoS-BoldItalic.215d7c93.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "Permanent Marker",
+      "src": "https://notion.com/_next/static/media/permanent-marker.18b85f55.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Regular-i18n.4c3206e4.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Regular-i18n.7e295069.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Italic-i18n.44620e58.woff2",
+      "format": "woff2",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Italic-i18n.b1e5fe40.woff",
+      "format": "woff",
+      "weight": "400"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Medium-i18n.f0b1a5fc.woff2",
+      "format": "woff2",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Medium-i18n.5a62ec46.woff",
+      "format": "woff",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-MediumItalic-i18n.2fe0b3fe.woff2",
+      "format": "woff2",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-MediumItalic-i18n.bfcddf65.woff",
+      "format": "woff",
+      "weight": "500"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBold-i18n.5e5b5908.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBold-i18n.304cb124.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBoldItalic-i18n.78183d16.woff2",
+      "format": "woff2",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-SemiBoldItalic-i18n.800dd100.woff",
+      "format": "woff",
+      "weight": "600"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Bold-i18n.38b709fc.woff2",
+      "format": "woff2",
+      "weight": "700"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-Bold-i18n.2aa1f67c.woff",
+      "format": "woff",
+      "weight": "700"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-BoldItalic-i18n.7ddacb60.woff2",
+      "format": "woff2",
+      "weight": "700"
+    },
+    {
+      "family": "NotionInter",
+      "src": "https://notion.com/_next/static/media/NotionInter-BoldItalic-i18n.4499f285.woff",
+      "format": "woff",
+      "weight": "700"
+    }
+  ],
+  "rules": {
+    "maxSizesPerScreen": 4,
+    "headingWeightRange": "600-700",
+    "bodyWeight": 400,
+    "lineHeightBody": 1.5,
+    "lineHeightHeading": 1.2
+  }
+}

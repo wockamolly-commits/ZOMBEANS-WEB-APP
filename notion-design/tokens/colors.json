@@ -1,0 +1,110 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "core": {
+    "text-primary": {
+      "value": "#000000",
+      "role": "text-primary",
+      "name": "color-black"
+    },
+    "background": {
+      "value": "#f9f9f8",
+      "role": "background",
+      "name": "color-gray-100"
+    },
+    "text-muted": {
+      "value": "#a39e98",
+      "role": "text-muted",
+      "name": "color-gray-400"
+    },
+    "border": {
+      "value": "#31302e",
+      "role": "border",
+      "name": "color-gray-800"
+    },
+    "accent": {
+      "value": "#0075de",
+      "role": "accent",
+      "name": "color-blue-600"
+    },
+    "surface": {
+      "value": "#e6f3fe",
+      "role": "surface",
+      "name": "color-blue-200"
+    }
+  },
+  "status": {
+    "warning": {
+      "value": "#f4bf4f",
+      "role": "warning"
+    },
+    "danger": {
+      "value": "#fdd3cd",
+      "role": "danger",
+      "name": "color-red-200"
+    }
+  },
+  "extended": {
+    "color-gray-600": {
+      "value": "#615d59",
+      "role": "unknown",
+      "name": "color-gray-600"
+    },
+    "color-gray-900": {
+      "value": "#191918",
+      "role": "unknown",
+      "name": "color-gray-900"
+    },
+    "color-blue-400": {
+      "value": "#62aef0",
+      "role": "info",
+      "name": "color-blue-400"
+    },
+    "color-blue-500": {
+      "value": "#097fe8",
+      "role": "unknown",
+      "name": "color-blue-500"
+    },
+    "color-campaigns-agents-launch-blue-200": {
+      "value": "#2537b1",
+      "role": "unknown",
+      "name": "color-campaigns-agents-launch-blue-200"
+    },
+    "color-gray-300": {
+      "value": "#dfdcd9",
+      "role": "unknown",
+      "name": "color-gray-300"
+    },
+    "color-2383e2": {
+      "value": "#2383e2",
+      "role": "unknown"
+    },
+    "color-gray-500": {
+      "value": "#78736f",
+      "role": "unknown",
+      "name": "color-gray-500"
+    },
+    "color-yellow-100": {
+      "value": "#fff5e0",
+      "role": "unknown",
+      "name": "color-yellow-100"
+    },
+    "color-172b4d": {
+      "value": "#172b4d",
+      "role": "unknown"
+    },
+    "color-yellow-500": {
+      "value": "#ffb110",
+      "role": "unknown",
+      "name": "color-yellow-500"
+    },
+    "color-red-500": {
+      "value": "#f64932",
+      "role": "unknown",
+      "name": "color-red-500"
+    }
+  },
+  "meta": {
+    "theme": "light",
+    "extracted": "2026-06-27"
+  }
+}
