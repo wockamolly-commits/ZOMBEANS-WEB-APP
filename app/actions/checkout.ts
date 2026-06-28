@@ -20,12 +20,9 @@ export type PlaceOrderInput = {
     city?: string;
     landmark?: string;
     deliveryNotes?: string;
-    lat?: number;
-    lng?: number;
+    lat: number;
+    lng: number;
     googlePlaceId?: string;
-    // Legacy manual-picker tier; ignored by place_order (kept for the
-    // maps_enabled=false fallback path).
-    tier?: "tier-2" | "tier-4" | "tier-6";
   };
   paymentMethod: "cash" | "gcash" | "maya" | "card";
   isTestOrder?: boolean;
@@ -108,7 +105,6 @@ export async function placeOrder(
             lat: input.delivery.lat,
             lng: input.delivery.lng,
             google_place_id: input.delivery.googlePlaceId,
-            tier: input.delivery.tier,
           }
         : null,
     payment_method: input.paymentMethod,
