@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { getTeamProfileForUser } from "@/lib/admin";
 import { isStoreOpen } from "@/lib/checkout";
-import type { CartLine } from "@/lib/cart";
+import { normalizeQuantity, type CartLine } from "@/lib/cart";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -108,7 +108,12 @@ export async function placeOrder(
       item_slug: line.itemSlug,
       variation_label: line.variationLabel,
       qty: line.quantity,
-      option_ids: (line.modifiers ?? []).map((modifier) => modifier.id),
+      options: (line.modifiers ?? []).map((modifier) => ({
+        option_id: modifier.id,
+        qty: allowsModifierQuantity(modifier.name)
+          ? normalizeQuantity(modifier.quantity)
+          : 1,
+      })),
     })),
   };
 
@@ -139,4 +144,8 @@ export async function placeOrder(
   }
 
   redirect(`/order/${shortCode}?fresh=1`);
+}
+
+function allowsModifierQuantity(name: string) {
+  return name.trim().toLowerCase() === "espresso";
 }

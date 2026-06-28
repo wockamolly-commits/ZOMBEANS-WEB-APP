@@ -6,6 +6,8 @@ import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   getCartSubtotal,
+  getModifierDisplayName,
+  getModifierLinePriceCents,
   readCart,
   writeCart,
   type CartLine,
@@ -80,9 +82,9 @@ export function CartView() {
                 <ul className="mt-1 space-y-0.5 text-xs text-zb-cream/45">
                   {line.modifiers.map((modifier) => (
                     <li key={modifier.id}>
-                      {modifier.name}
+                      {getModifierDisplayName(modifier)}
                       {modifier.priceDeltaCents > 0
-                        ? ` (+${formatPeso(modifier.priceDeltaCents)})`
+                        ? ` (+${formatPeso(getModifierLinePriceCents(modifier))})`
                         : ""}
                     </li>
                   ))}

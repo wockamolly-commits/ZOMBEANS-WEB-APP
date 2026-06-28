@@ -41,6 +41,7 @@ type OrderPayload = {
       group: string;
       name: string;
       price_delta_cents: number;
+      quantity: number;
     }>;
   }>;
 };
@@ -204,9 +205,11 @@ export default async function OrderTrackingPage({
                         <ul className="mt-1 space-y-0.5 text-xs text-zb-cream/45">
                           {line.options.map((option) => (
                             <li key={`${option.group}-${option.name}`}>
-                              {option.name}
+                              {option.quantity > 1
+                                ? `${option.name} x${option.quantity}`
+                                : option.name}
                               {option.price_delta_cents > 0
-                                ? ` (+${formatPeso(option.price_delta_cents)})`
+                                ? ` (+${formatPeso(option.price_delta_cents * option.quantity)})`
                                 : ""}
                             </li>
                           ))}

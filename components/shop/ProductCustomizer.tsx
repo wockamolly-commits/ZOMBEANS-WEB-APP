@@ -34,52 +34,97 @@ export function ProductCustomizer({
   const [added, setAdded] = useState(false);
   const [itemNote, setItemNote] = useState("");
   const [selectedOptions, setSelectedOptions] = useState<
-    Record<string, string[]>
+    Record<string, Record<string, number>>
   >({});
   const variation = item.variations[variationIndex];
   const selectedModifiers = optionGroups.flatMap((group) => {
-    const selected = new Set(selectedOptions[group.id] ?? []);
+    const selected = selectedOptions[group.id] ?? {};
     return group.options
-      .filter((option) => selected.has(option.id))
+      .filter((option) => (selected[option.id] ?? 0) > 0)
       .map((option) => ({
         id: option.id,
         groupName: group.name,
         name: option.name,
         priceDeltaCents: option.priceDeltaCents,
+        quantity: allowsOptionQuantity(option.name)
+          ? (selected[option.id] ?? 1)
+          : 1,
       }));
   });
   const modifierTotal = selectedModifiers.reduce(
-    (sum, option) => sum + option.priceDeltaCents,
+    (sum, option) => sum + option.priceDeltaCents * option.quantity,
+    0
+  );
+  const selectedAddOnCount = selectedModifiers.reduce(
+    (sum, option) => sum + option.quantity,
     0
   );
   const unitPrice = variation.priceCents + modifierTotal;
   const total = unitPrice * quantity;
   const selectionValid = optionGroups.every((group) => {
-    const count = selectedOptions[group.id]?.length ?? 0;
+    const count = getSelectedOptionCount(selectedOptions[group.id]);
     return count >= group.minSelect && count <= group.maxSelect;
   });
 
+  function changeOptionQuantity(
+    group: StorefrontOptionGroup,
+    optionId: string,
+    delta: number
+  ) {
+    setSelectedOptions((current) => {
+      const quantities = { ...(current[group.id] ?? {}) };
+      const currentQuantity = quantities[optionId] ?? 0;
+      const selectedCount = getSelectedOptionCount(quantities);
+
+      if (
+        delta > 0 &&
+        currentQuantity === 0 &&
+        group.maxSelect > 1 &&
+        selectedCount >= group.maxSelect
+      ) {
+        return current;
+      }
+
+      const nextQuantity = Math.max(
+        0,
+        Math.min(20, currentQuantity + delta)
+      );
+      if (nextQuantity === 0) {
+        delete quantities[optionId];
+      } else if (group.maxSelect === 1 && currentQuantity === 0) {
+        return { ...current, [group.id]: { [optionId]: nextQuantity } };
+      } else {
+        quantities[optionId] = nextQuantity;
+      }
+
+      return { ...current, [group.id]: quantities };
+    });
+  }
+
   function toggleOption(group: StorefrontOptionGroup, optionId: string) {
     setSelectedOptions((current) => {
-      const selected = current[group.id] ?? [];
-      if (selected.includes(optionId)) {
-        return {
-          ...current,
-          [group.id]: selected.filter((id) => id !== optionId),
-        };
+      const quantities = { ...(current[group.id] ?? {}) };
+      const currentQuantity = quantities[optionId] ?? 0;
+      const selectedCount = getSelectedOptionCount(quantities);
+
+      if (currentQuantity > 0) {
+        delete quantities[optionId];
+        return { ...current, [group.id]: quantities };
       }
+
       if (group.maxSelect === 1) {
-        return { ...current, [group.id]: [optionId] };
+        return { ...current, [group.id]: { [optionId]: 1 } };
       }
-      if (selected.length >= group.maxSelect) return current;
-      return { ...current, [group.id]: [...selected, optionId] };
+      if (selectedCount >= group.maxSelect) return current;
+
+      return { ...current, [group.id]: { ...quantities, [optionId]: 1 } };
     });
   }
 
   function saveConfiguredLine() {
     const lines = readCart();
     const modifierKey = selectedModifiers
-      .map((modifier) => modifier.id)
+      .map((modifier) => `${modifier.id}:${modifier.quantity}`)
       .sort()
       .join(",");
     const normalizedNote = itemNote.trim();
@@ -148,7 +193,8 @@ export function ProductCustomizer({
       </fieldset>
 
       {optionGroups.map((group) => {
-        const selected = selectedOptions[group.id] ?? [];
+        const selected = selectedOptions[group.id] ?? {};
+        const selectedCount = getSelectedOptionCount(selected);
         return (
           <fieldset key={group.id}>
             <div className="flex items-end justify-between gap-3">
@@ -168,27 +214,89 @@ export function ProductCustomizer({
             )}
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {group.options.map((option) => {
-                const checked = selected.includes(option.id);
+                const optionQuantity = selected[option.id] ?? 0;
+                const checked = optionQuantity > 0;
+                const canAdjustQuantity = allowsOptionQuantity(option.name);
+                const addDisabled =
+                  optionQuantity === 0 &&
+                  group.maxSelect > 1 &&
+                  selectedCount >= group.maxSelect;
+                if (!canAdjustQuantity) {
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role={group.maxSelect === 1 ? "radio" : "checkbox"}
+                      aria-checked={checked}
+                      disabled={addDisabled}
+                      onClick={() => toggleOption(group, option.id)}
+                      className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                        checked
+                          ? "border-zb-bone bg-zb-bone/12 text-zb-cream shadow-[inset_0_0_0_1px_rgba(229,192,123,0.08)]"
+                          : "border-zb-sage/30 bg-zb-primary/45 text-zb-cream/70 hover:border-zb-sage hover:bg-zb-primary/70"
+                      }`}
+                    >
+                      <span className="truncate font-medium">
+                        {option.name}
+                      </span>
+                      <span className="font-mono-tabular text-xs text-zb-bone">
+                        {option.priceDeltaCents > 0
+                          ? `+${formatPeso(option.priceDeltaCents)}`
+                          : "Included"}
+                      </span>
+                    </button>
+                  );
+                }
+
                 return (
-                  <button
+                  <div
                     key={option.id}
-                    type="button"
                     role={group.maxSelect === 1 ? "radio" : "checkbox"}
                     aria-checked={checked}
-                    onClick={() => toggleOption(group, option.id)}
-                    className={`flex min-h-12 items-center justify-between gap-3 rounded-xl border px-4 text-left transition ${
+                    className={`grid min-h-14 grid-cols-[1fr_auto] items-center gap-3 rounded-xl border px-4 py-2 text-left transition ${
                       checked
                         ? "border-zb-bone bg-zb-bone/12 text-zb-cream shadow-[inset_0_0_0_1px_rgba(229,192,123,0.08)]"
                         : "border-zb-sage/30 bg-zb-primary/45 text-zb-cream/70 hover:border-zb-sage hover:bg-zb-primary/70"
                     }`}
                   >
-                    <span className="font-medium">{option.name}</span>
-                    <span className="font-mono-tabular text-xs text-zb-bone">
-                      {option.priceDeltaCents > 0
-                        ? `+${formatPeso(option.priceDeltaCents)}`
-                        : "Included"}
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">
+                        {option.name}
+                      </span>
+                      <span className="block font-mono-tabular text-xs text-zb-bone">
+                        {option.priceDeltaCents > 0
+                          ? `+${formatPeso(option.priceDeltaCents)}`
+                          : "Included"}
+                      </span>
                     </span>
-                  </button>
+                    <span className="inline-flex items-center rounded-lg border border-zb-sage/30 bg-zb-primary-dark/30 p-0.5">
+                      <button
+                        type="button"
+                        aria-label={`Decrease ${option.name}`}
+                        disabled={!checked}
+                        onClick={() =>
+                          changeOptionQuantity(group, option.id, -1)
+                        }
+                        className="inline-flex size-8 items-center justify-center rounded-md transition hover:bg-zb-sage/20 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Minus className="size-3.5" />
+                      </button>
+                      <span className="w-8 text-center font-mono-tabular text-sm">
+                        {optionQuantity}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Increase ${option.name}`}
+                        disabled={addDisabled}
+                        onClick={() =>
+                          changeOptionQuantity(group, option.id, 1)
+                        }
+                        className="inline-flex size-8 items-center justify-center rounded-md transition hover:bg-zb-sage/20 disabled:cursor-not-allowed disabled:opacity-35"
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
+                    </span>
+                  </div>
                 );
               })}
             </div>
@@ -250,8 +358,8 @@ export function ProductCustomizer({
             </p>
             <p className="mt-1 text-xs text-zb-cream/45">
               {quantity} {quantity === 1 ? "item" : "items"}
-              {selectedModifiers.length > 0
-                ? ` · ${selectedModifiers.length} add-on${selectedModifiers.length === 1 ? "" : "s"}`
+              {selectedAddOnCount > 0
+                ? ` · ${selectedAddOnCount} add-on${selectedAddOnCount === 1 ? "" : "s"}`
                 : ""}
             </p>
           </div>
@@ -289,4 +397,12 @@ export function ProductCustomizer({
       </div>
     </div>
   );
+}
+
+function getSelectedOptionCount(options: Record<string, number> | undefined) {
+  return Object.values(options ?? {}).filter((quantity) => quantity > 0).length;
+}
+
+function allowsOptionQuantity(name: string) {
+  return name.trim().toLowerCase() === "espresso";
 }

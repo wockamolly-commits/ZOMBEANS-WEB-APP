@@ -6,6 +6,7 @@ export type CartModifier = {
   groupName: string;
   name: string;
   priceDeltaCents: number;
+  quantity: number;
 };
 
 export type CartLine = {
@@ -26,7 +27,7 @@ export function readCart(): CartLine[] {
 
   try {
     const value = window.localStorage.getItem(CART_STORAGE_KEY);
-    return value ? (JSON.parse(value) as CartLine[]) : [];
+    return value ? normalizeCartLines(JSON.parse(value) as CartLine[]) : [];
   } catch {
     return [];
   }
@@ -46,4 +47,39 @@ export function getCartSubtotal(lines: CartLine[]) {
     (total, line) => total + line.unitPriceCents * line.quantity,
     0
   );
+}
+
+export function getModifierDisplayName(modifier: CartModifier) {
+  const quantity = getModifierQuantity(modifier);
+  return quantity > 1 ? `${modifier.name} x${quantity}` : modifier.name;
+}
+
+export function getModifierLinePriceCents(modifier: CartModifier) {
+  return modifier.priceDeltaCents * getModifierQuantity(modifier);
+}
+
+export function getModifierQuantity(modifier: CartModifier) {
+  return allowsModifierQuantity(modifier.name)
+    ? normalizeQuantity(modifier.quantity)
+    : 1;
+}
+
+function normalizeCartLines(lines: CartLine[]) {
+  return lines.map((line) => ({
+    ...line,
+    modifiers: line.modifiers?.map((modifier) => ({
+      ...modifier,
+      quantity: normalizeQuantity(modifier.quantity),
+    })),
+  }));
+}
+
+export function normalizeQuantity(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(1, Math.min(50, Math.trunc(value)))
+    : 1;
+}
+
+function allowsModifierQuantity(name: string) {
+  return name.trim().toLowerCase() === "espresso";
 }
