@@ -4,7 +4,7 @@
 
 **Goal:** Replace the manual delivery distance-tier picker in checkout with a Google Maps address picker that captures real coordinates, and compute the delivery fee + zone authoritatively on the server from those coordinates.
 
-**Architecture:** A Postgres `delivery_quote(lat,lng)` function (haversine, reads `app_settings`) is the authoritative fee/zone source, called by both `place_order` (the charge) and a `quoteDelivery` server action (the live UI readout). A new `DeliveryMapPicker` client component (Places Autocomplete + draggable map pin) feeds coordinates to the action and to placement. A pure `lib/delivery.ts` mirrors the math for unit tests and an instant optimistic UI estimate. The map UI is gated by `app_settings.maps_enabled`; the existing manual tier picker stays as the off-state fallback.
+**Architecture:** A Postgres `delivery_quote(lat,lng)` function (haversine, reads `app_settings`) is the authoritative fee/zone source, called by both `place_order` (the charge) and a `quoteDelivery` server action (the live UI readout). A new `DeliveryMapPicker` client component (Places Autocomplete + draggable map pin) feeds coordinates to the action and to placement. A pure `lib/delivery.ts` mirrors the math for unit tests and an instant optimistic UI estimate. Delivery is gated by `app_settings.maps_enabled` (+ a browser key): with Maps off, the Delivery sub-mode is hidden and customers use Pickup — there is no typed-address delivery path, since a typed address can't be priced/zoned securely.
 
 **Tech Stack:** Next.js 16 (App Router/RSC), React 19, TypeScript strict, Supabase/Postgres, Google Maps JavaScript API + Places API (New), Tailwind v4, Zod v4, Vitest.
 
@@ -21,7 +21,9 @@
 - Env: `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` (browser, referrer-restricted), `GOOGLE_MAPS_SERVER_KEY` (server, Geocoding) — both already in `.env.local`.
 - Theme tokens only: `zb-primary`, `zb-primary-strong`, `zb-primary-dark`, `zb-cream`, `zb-bone`, `zb-bone-soft`, `zb-sage`, `zb-danger`.
 
-**Out of scope (follow-up):** persisting `lat/lng/google_place_id` on **saved** addresses (`customer_addresses`) and re-pinning them on the account page. Saved addresses keep working via their stored `tier`; only the checkout *new-address* flow gets the map. Static map on the tracking page; driving distance.
+**Delivery requires Maps (no manual fallback).** Because the fee/zone is computed from coordinates, there is **no typed-address delivery path** — it can't be priced securely. When `maps_enabled` is off (or the browser key is missing), the **Delivery sub-mode is hidden** and customers use Pickup; Dine-in/Pickup are unaffected. Saved addresses persist `lat/lng/google_place_id` (Task 6); a legacy saved address without coordinates is re-pinned on the map before use.
+
+**Out of scope:** static map on the tracking page; driving distance.
 
 ---
 
@@ -612,7 +614,7 @@ git commit -m "feat(db): place_order derives delivery fee + zone from coordinate
 - Produces:
   - `type DeliveryQuoteResult = { ok: true; inZone: boolean; distanceKm: number; tier: string | null; feeCents: number | null } | { ok: false; error: string }`
   - `async function quoteDelivery(input: { lat: number; lng: number }): Promise<DeliveryQuoteResult>`
-  - Extended `PlaceOrderInput["delivery"]` with `lat?: number; lng?: number; googlePlaceId?: string` (and `tier` made optional — ignored server-side now).
+  - Extended `PlaceOrderInput["delivery"]` carries `lat: number; lng: number; googlePlaceId?: string` and the `tier` field is **removed** (delivery is always coordinate-priced).
 
 No unit test (server action); verified by `npm run build` + `npm run lint` and Final Verification.
 
@@ -627,14 +629,13 @@ In `app/actions/checkout.ts`, replace the `delivery?: {...}` block in `PlaceOrde
     city?: string;
     landmark?: string;
     deliveryNotes?: string;
-    lat?: number;
-    lng?: number;
+    lat: number;
+    lng: number;
     googlePlaceId?: string;
-    // Legacy manual-picker tier; ignored by place_order (kept for the
-    // maps_enabled=false fallback path).
-    tier?: "tier-2" | "tier-4" | "tier-6";
   };
 ```
+
+(There is no `tier` field — the fee/zone is always derived from `lat`/`lng` server-side.)
 
 - [ ] **Step 2: Send coordinates in the place_order payload**
 
@@ -652,7 +653,6 @@ In the same file, in the `payload` object's `delivery` builder (currently lines 
             lat: input.delivery.lat,
             lng: input.delivery.lng,
             google_place_id: input.delivery.googlePlaceId,
-            tier: input.delivery.tier,
           }
         : null,
 ```
@@ -1015,12 +1015,43 @@ git commit -m "feat: DeliveryMapPicker (Places Autocomplete + draggable pin + li
 ### Task 5: Wire the map into checkout behind `maps_enabled`
 
 **Files:**
+- Modify: `lib/auth.ts` (`SavedAddress` type + select — consumed here and in Task 6)
 - Modify: `app/(shop)/checkout/page.tsx`
 - Modify: `components/shop/CheckoutForm.tsx`
 
 **Interfaces:**
 - Consumes: `DeliveryMapPicker`, `DeliveryDetails` (Task 4); `quoteDelivery`/extended `PlaceOrderInput` (Task 3).
-- Produces: `CheckoutForm` gains props `mapsEnabled: boolean`, `mapsApiKey: string | null`, `storeLat: number`, `storeLng: number`, `deliveryTiers: DeliveryTier[]`, `deliveryMaxKm: number`.
+- Produces: `SavedAddress` gains `lat: number | null; lng: number | null; google_place_id: string | null`, and `tier` becomes `"tier-2" | "tier-4" | "tier-6" | null`. `CheckoutForm` gains props `mapsEnabled: boolean`, `mapsApiKey: string | null`, `storeLat: number`, `storeLng: number`, `deliveryTiers: DeliveryTier[]`, `deliveryMaxKm: number`.
+
+- [ ] **Step 0: Extend `SavedAddress` (used by checkout now and the account page in Task 6)**
+
+In `lib/auth.ts`, replace the `SavedAddress` type with:
+
+```ts
+export type SavedAddress = {
+  id: string;
+  label: string | null;
+  street: string;
+  barangay: string | null;
+  landmark: string | null;
+  city: string;
+  tier: "tier-2" | "tier-4" | "tier-6" | null;
+  lat: number | null;
+  lng: number | null;
+  google_place_id: string | null;
+  is_default: boolean;
+};
+```
+
+And in `getSavedAddresses`, change the `.select(...)` to:
+
+```ts
+    .select(
+      "id, label, street, barangay, landmark, city, tier, lat, lng, google_place_id, is_default"
+    )
+```
+
+(The `customer_addresses` columns themselves are added in Task 6's migration; until then these read as `null`, so every saved address simply prompts a re-pin — the intended behavior.)
 
 No unit test (RSC/UI); verified by `npm run lint` + `npm run build` + manual checklist.
 
@@ -1098,36 +1129,83 @@ Add near the other `useState` calls (after `const [deliveryTier, setDeliveryTier
   const [mapDetails, setMapDetails] = useState<DeliveryDetails | null>(null);
 ```
 
-- [ ] **Step 5: Compute the delivery fee from the active source**
+- [ ] **Step 5: Remove the manual tier state/imports; compute fee + readiness from coordinates**
 
-Replace the existing `const deliveryFee = ...` line (currently ~line 274) with:
+(a) Delete the now-unused manual-picker pieces from `components/shop/CheckoutForm.tsx`:
+- the `DELIVERY_TIERS` import from `@/lib/checkout` (keep `getDeliveryFeeCents` — still used for the saved-address fee preview);
+- the `const [deliveryTier, setDeliveryTier] = useState("");` line (replace with the `mapDetails` state from Step 4).
+
+(b) Replace the existing `const deliveryFee = ...` line (currently ~line 274) with:
 
 ```ts
-  // With Maps on, the fee comes from the server-confirmed map pick; otherwise
-  // from the manual tier radios.
+  // Delivery is Maps-only. Fee preview comes from the server-confirmed map
+  // pick, or — for a saved address that already has coordinates — its stored
+  // (server-derived) tier. place_order always re-derives the charge from coords.
+  const savedSelected = savedAddresses.find((a) => a.id === selectedAddressId);
+  const savedHasCoords =
+    savedSelected != null && savedSelected.lat != null && savedSelected.lng != null;
   const deliveryFee =
     mode === "delivery"
-      ? mapsEnabled
-        ? mapDetails?.feeCents ?? 0
-        : getDeliveryFeeCents(deliveryTier)
+      ? mapDetails?.feeCents ??
+        (savedHasCoords ? getDeliveryFeeCents(savedSelected!.tier ?? "") : 0)
       : 0;
+  // Ready when a saved address already has coordinates, or the map pin produced
+  // an in-zone quote (mapDetails is set to null on out-of-zone by the picker).
   const deliveryReady =
-    mode !== "delivery" ||
-    Boolean(selectedAddressId) ||
-    (mapsEnabled ? mapDetails !== null : deliveryTier !== "" && deliveryTier !== "out-of-zone");
+    mode !== "delivery" || savedHasCoords || mapDetails !== null;
 ```
 
-(A selected saved address is always ready — it carries its own `tier`.)
+- [ ] **Step 6: Gate Delivery on Maps and render the picker (replace the manual fields)**
 
-- [ ] **Step 6: Render the map picker in the delivery branch**
-
-In the `mode === "delivery" && effectiveIsLoggedIn` block, render the map picker when `mapsEnabled` (and no saved address is selected), and show the existing manual address fields only when `!mapsEnabled`. A selected saved address needs no extra input under Maps (it carries its own `tier`). Concretely, immediately after the saved-addresses `fieldset` closing tag and before the `Delivery address` label, insert:
+(a) Hide the Delivery sub-option when Maps is unavailable. In the `takeOutModes.map(...)` (currently ~line 485), filter it and add an explanatory note. Change the opening to:
 
 ```tsx
-                {mapsEnabled && mapsApiKey && !selectedAddressId && (
+                {takeOutModes
+                  .filter((entry) => mapsEnabled || entry.value !== "delivery")
+                  .map((entry) => {
+```
+
+and immediately after that grid's closing `</div>`, add:
+
+```tsx
+                {!mapsEnabled && (
+                  <p className="mt-3 px-1 text-xs leading-5 text-zb-cream/55">
+                    Delivery is temporarily unavailable — please choose Pickup.
+                  </p>
+                )}
+```
+
+(b) In the saved-addresses radios, reset the map pin when the selection changes so a saved address without coordinates forces a re-pin. Replace the radio `onChange` (currently `onChange={() => { setSelectedAddressId(a.id); setDeliveryTier(a.tier); }}`) with:
+
+```tsx
+                            onChange={() => {
+                              setSelectedAddressId(a.id);
+                              setMapDetails(null);
+                            }}
+```
+
+and the "Enter a new address instead" button `onClick` (currently clears `deliveryTier`) with:
+
+```tsx
+                        onClick={() => {
+                          setSelectedAddressId("");
+                          setMapDetails(null);
+                        }}
+```
+
+(c) **Delete** the entire manual address block — the `Delivery address` textarea label, the `Barangay` input, the `Landmark` input, and the whole `Approximate distance` `<fieldset>` (including the `out-of-zone` radio) — and replace it with the map picker. Insert this in their place (still inside the `mode === "delivery" && effectiveIsLoggedIn` block, after the saved-addresses `fieldset`):
+
+```tsx
+                {(!selectedAddressId || !savedHasCoords) && (
                   <div className="sm:col-span-2 space-y-3">
+                    {selectedAddressId && !savedHasCoords && (
+                      <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+                        This saved address needs a pin — drop it on the map to
+                        confirm the delivery fee.
+                      </p>
+                    )}
                     <DeliveryMapPicker
-                      apiKey={mapsApiKey}
+                      apiKey={mapsApiKey!}
                       storeLat={storeLat}
                       storeLng={storeLng}
                       tiers={deliveryTiers}
@@ -1142,25 +1220,9 @@ In the `mode === "delivery" && effectiveIsLoggedIn` block, render the map picker
                 )}
 ```
 
-Then keep the manual block for the `maps_enabled=false` fallback only. Wrap the manual fields group by replacing the `Delivery address` label's opening line:
+(`mapsApiKey` is non-null here because Delivery is only selectable when `mapsEnabled`, which requires the key.)
 
-```tsx
-                {!mapsEnabled && (
-                <>
-                <label className="text-sm font-medium sm:col-span-2">
-                  Delivery address
-```
-
-and after the `Approximate distance` `fieldset` closing tag (`</fieldset>`), close the wrapper:
-
-```tsx
-                </>
-                )}
-```
-
-(Under the fallback, the saved-address path keeps prefilling these manual fields and its `tier`, exactly as today.)
-
-- [ ] **Step 7: Build the delivery payload from the map details**
+- [ ] **Step 7: Build the delivery payload (coordinates only)**
 
 In `handlePlaceOrder`, replace the `delivery:` builder in the `input` object (currently lines ~312-334) with:
 
@@ -1169,15 +1231,25 @@ In `handlePlaceOrder`, replace the `delivery:` builder in the `input` object (cu
         mode === "delivery" && effectiveIsLoggedIn
           ? (() => {
               const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-              if (saved) {
+              // A re-pin (mapDetails) wins; otherwise use the saved address's
+              // stored coordinates.
+              if (
+                saved &&
+                saved.lat != null &&
+                saved.lng != null &&
+                mapDetails === null
+              ) {
                 return {
                   street: saved.street,
                   barangay: saved.barangay ?? undefined,
+                  city: saved.city,
                   landmark: saved.landmark ?? undefined,
-                  tier: saved.tier,
+                  lat: saved.lat,
+                  lng: saved.lng,
+                  googlePlaceId: saved.google_place_id ?? undefined,
                 };
               }
-              if (mapsEnabled && mapDetails) {
+              if (mapDetails) {
                 return {
                   street: mapDetails.street,
                   barangay: mapDetails.barangay ?? undefined,
@@ -1186,14 +1258,6 @@ In `handlePlaceOrder`, replace the `delivery:` builder in the `input` object (cu
                   lat: mapDetails.lat,
                   lng: mapDetails.lng,
                   googlePlaceId: mapDetails.googlePlaceId ?? undefined,
-                };
-              }
-              if (!mapsEnabled && deliveryTier && deliveryTier !== "out-of-zone") {
-                return {
-                  street: String(data.get("street") ?? ""),
-                  barangay: data.get("barangay") ? String(data.get("barangay")) : undefined,
-                  landmark: data.get("landmark") ? String(data.get("landmark")) : undefined,
-                  tier: deliveryTier as "tier-2" | "tier-4" | "tier-6",
                 };
               }
               return undefined;
@@ -1212,15 +1276,282 @@ In the `Review order` submit button's `disabled` expression (currently includes 
 - [ ] **Step 9: Lint + build**
 
 Run: `npm run lint`
-Expected: no errors; confirm all new props are used.
+Expected: no errors; confirm all new props are used and no `deliveryTier`/`DELIVERY_TIERS` references remain in the file.
 Run: `npm run build`
 Expected: success.
 
 - [ ] **Step 10: Commit**
 
 ```bash
-git add "app/(shop)/checkout/page.tsx" "components/shop/CheckoutForm.tsx"
-git commit -m "feat: Maps delivery picker in checkout behind maps_enabled with manual fallback"
+git add lib/auth.ts "app/(shop)/checkout/page.tsx" "components/shop/CheckoutForm.tsx"
+git commit -m "feat: Maps-only delivery picker in checkout (gated on maps_enabled)"
+```
+
+---
+
+### Task 6: Persist coordinates on saved addresses + map on the account page
+
+**Files:**
+- Modify: `supabase/migrations/0047_maps_delivery.sql` (append column adds)
+- Modify: `app/account/actions.ts` (`addAddress` derives tier/zone from coords)
+- Modify: `app/account/page.tsx` (pass Maps config to `AddressManager`)
+- Modify: `components/account/AddressManager.tsx` (map picker instead of the manual tier select)
+
+**Interfaces:**
+- Consumes: `delivery_quote` RPC (Task 1); `DeliveryMapPicker`/`DeliveryDetails` (Task 4); the `SavedAddress` shape extended in Task 5.
+- Produces: `customer_addresses` gains `lat`, `lng`, `google_place_id` columns; `addAddress` stores coordinates and a server-derived `tier`.
+
+No unit test (DB + UI); verified by `npm run lint` + `npm run build` + the account-page checklist.
+
+- [ ] **Step 1: Append the column migration to 0047**
+
+Append to `supabase/migrations/0047_maps_delivery.sql`:
+
+```sql
+-- Saved addresses carry coordinates so deliveries re-quote exactly. tier is now
+-- server-derived from coordinates at save time and becomes nullable (legacy
+-- rows keep their tier and have no coordinates until re-pinned).
+alter table customer_addresses
+  add column if not exists lat numeric(10,7),
+  add column if not exists lng numeric(10,7),
+  add column if not exists google_place_id text;
+
+alter table customer_addresses alter column tier drop not null;
+```
+
+(The `SavedAddress` type + select were already extended in Task 5, Step 0.)
+
+- [ ] **Step 2: Derive tier/zone from coordinates in `addAddress`**
+
+In `app/account/actions.ts`, replace `addressSchema` with:
+
+```ts
+const addressSchema = z.object({
+  label: z.string().trim().max(40).optional(),
+  street: z.string().trim().min(1, { error: "Street is required." }),
+  barangay: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  landmark: z.string().trim().optional(),
+  lat: z.coerce.number(),
+  lng: z.coerce.number(),
+  googlePlaceId: z.string().trim().optional(),
+});
+```
+
+Replace the `parsed` construction and the insert in `addAddress` with:
+
+```ts
+  const parsed = addressSchema.safeParse({
+    label: formData.get("label") ?? "",
+    street: formData.get("street") ?? "",
+    barangay: formData.get("barangay") ?? "",
+    city: formData.get("city") ?? "",
+    landmark: formData.get("landmark") ?? "",
+    lat: formData.get("lat") ?? "",
+    lng: formData.get("lng") ?? "",
+    googlePlaceId: formData.get("googlePlaceId") ?? "",
+  });
+  if (!parsed.success) {
+    return { status: "error", message: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await createClient();
+
+  // Derive tier + zone server-side from the coordinates (never trust a client
+  // tier). Reject out-of-zone saves.
+  const { data: quote, error: quoteError } = await supabase.rpc("delivery_quote", {
+    p_lat: parsed.data.lat,
+    p_lng: parsed.data.lng,
+  });
+  const q = quote?.[0] as
+    | { in_zone: boolean; tier: string | null }
+    | undefined;
+  if (quoteError || !q) {
+    return { status: "error", message: "Could not check that location." };
+  }
+  if (!q.in_zone) {
+    return {
+      status: "error",
+      message: "That address is outside our 6 km delivery zone.",
+    };
+  }
+
+  const { error } = await supabase.from("customer_addresses").insert({
+    user_id: user.id,
+    label: parsed.data.label || null,
+    street: parsed.data.street,
+    barangay: parsed.data.barangay || null,
+    city: parsed.data.city || "San Carlos City",
+    landmark: parsed.data.landmark || null,
+    tier: q.tier,
+    lat: parsed.data.lat,
+    lng: parsed.data.lng,
+    google_place_id: parsed.data.googlePlaceId || null,
+  });
+  if (error) {
+    console.error("[account] address insert failed:", error);
+    return { status: "error", message: "Could not save address." };
+  }
+
+  revalidatePath("/account");
+  return { status: "added" };
+```
+
+- [ ] **Step 3: Pass Maps config to `AddressManager` from `app/account/page.tsx`**
+
+In `app/account/page.tsx`, after `const addresses = await getSavedAddresses();`, add (reusing the already-imported `createClient`):
+
+```tsx
+  const { data: settingsRow } = await supabase
+    .from("app_settings")
+    .select("maps_enabled, store_lat, store_lng, delivery_fee_tiers, delivery_max_km")
+    .eq("id", 1)
+    .single();
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsEnabled = Boolean(settingsRow?.maps_enabled) && Boolean(mapsApiKey);
+  const deliveryTiers = ((settingsRow?.delivery_fee_tiers as
+    | { max_km: number; fee_cents: number }[]
+    | null) ?? []).map((t) => ({ maxKm: t.max_km, feeCents: t.fee_cents }));
+```
+
+(`app/account/page.tsx` already creates a server `supabase` client via `createClient`; if not, add `const supabase = await createClient();` before this block.)
+
+Then pass the props to `<AddressManager>`:
+
+```tsx
+              <AddressManager
+                addresses={addresses}
+                mapsEnabled={mapsEnabled}
+                mapsApiKey={mapsApiKey}
+                storeLat={Number(settingsRow?.store_lat ?? 10.4884825)}
+                storeLng={Number(settingsRow?.store_lng ?? 123.4111058)}
+                deliveryTiers={deliveryTiers}
+                deliveryMaxKm={Number(settingsRow?.delivery_max_km ?? 6)}
+              />
+```
+
+- [ ] **Step 4: Replace the tier select with the map picker in `AddressManager`**
+
+In `components/account/AddressManager.tsx`:
+
+(a) Replace the imports block (lines ~3-14) with:
+
+```ts
+import { useActionState, useState } from "react";
+import { Star, Trash2 } from "lucide-react";
+import type { SavedAddress } from "@/lib/auth";
+import {
+  DeliveryMapPicker,
+  type DeliveryDetails,
+} from "@/components/shop/DeliveryMapPicker";
+import type { DeliveryTier } from "@/lib/delivery";
+import {
+  addAddress,
+  deleteAddress,
+  setDefaultAddress,
+  type AddressState,
+} from "@/app/account/actions";
+```
+
+(b) Replace the component signature + state (lines ~20-22) with:
+
+```ts
+export function AddressManager({
+  addresses,
+  mapsEnabled,
+  mapsApiKey,
+  storeLat,
+  storeLng,
+  deliveryTiers,
+  deliveryMaxKm,
+}: {
+  addresses: SavedAddress[];
+  mapsEnabled: boolean;
+  mapsApiKey: string | null;
+  storeLat: number;
+  storeLng: number;
+  deliveryTiers: DeliveryTier[];
+  deliveryMaxKm: number;
+}) {
+  const [state, action, pending] = useActionState(addAddress, initial);
+  const [details, setDetails] = useState<DeliveryDetails | null>(null);
+```
+
+(c) Replace the entire `<form action={action} ...>...</form>` block (lines ~57-115) with a form that uses the map picker and hidden coordinate inputs:
+
+```tsx
+      {mapsEnabled && mapsApiKey ? (
+        <form action={action} className="grid gap-3">
+          <label className="text-sm font-medium text-zb-cream">
+            Label <span className="font-normal text-zb-cream/45">(optional)</span>
+            <input name="label" className={inputClass} placeholder="Home" />
+          </label>
+
+          <DeliveryMapPicker
+            apiKey={mapsApiKey}
+            storeLat={storeLat}
+            storeLng={storeLng}
+            tiers={deliveryTiers}
+            maxKm={deliveryMaxKm}
+            onChange={setDetails}
+          />
+
+          {details && (
+            <p className="text-sm text-zb-cream/70">
+              {details.street}
+              {details.barangay ? `, ${details.barangay}` : ""} · {details.city}
+            </p>
+          )}
+
+          <label className="text-sm font-medium text-zb-cream">
+            Landmark
+            <input name="landmark" className={inputClass} placeholder="Near the red gate" />
+          </label>
+
+          {/* Server derives tier/zone from these coordinates. */}
+          <input type="hidden" name="street" value={details?.street ?? ""} readOnly />
+          <input type="hidden" name="barangay" value={details?.barangay ?? ""} readOnly />
+          <input type="hidden" name="city" value={details?.city ?? ""} readOnly />
+          <input type="hidden" name="lat" value={details?.lat ?? ""} readOnly />
+          <input type="hidden" name="lng" value={details?.lng ?? ""} readOnly />
+          <input
+            type="hidden"
+            name="googlePlaceId"
+            value={details?.googlePlaceId ?? ""}
+            readOnly
+          />
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={pending || details === null}
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-55"
+            >
+              {pending ? "Saving…" : "Add address"}
+            </button>
+            {state.status === "added" && <span aria-live="polite" className="text-sm text-zb-bone">Added.</span>}
+            {state.status === "error" && <span role="alert" className="text-sm text-zb-danger">{state.message}</span>}
+          </div>
+        </form>
+      ) : (
+        <p className="rounded-xl border border-zb-sage/25 bg-zb-primary-dark/35 p-4 text-sm text-zb-cream/65">
+          Saving new delivery addresses is temporarily unavailable.
+        </p>
+      )}
+```
+
+- [ ] **Step 5: Lint + build**
+
+Run: `npm run lint`
+Expected: no errors; no `DELIVERY_TIERS` / manual-tier references remain in `AddressManager.tsx`.
+Run: `npm run build`
+Expected: success.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add supabase/migrations/0047_maps_delivery.sql app/account/actions.ts "app/account/page.tsx" components/account/AddressManager.tsx
+git commit -m "feat: persist coordinates on saved addresses with map-based account form"
 ```
 
 ---
@@ -1236,10 +1567,13 @@ git commit -m "feat: Maps delivery picker in checkout behind maps_enabled with m
   - Pick a point > 6 km away → out-of-zone message; submit stays disabled.
   - Place an in-zone delivery order → success; `/order/<code>` shows the matching delivery fee and total.
   - Verify in DB: `delivery_addresses` row has real `lat`/`lng` (not store coords) and `google_place_id`.
-  - Set `maps_enabled = false` → the manual tier picker renders again and an order can still be placed.
+  - Account page: add an address via the map → it saves with `lat`/`lng`/`tier`; selecting it at checkout requires no re-pin and prices correctly.
+  - A legacy saved address (no coordinates) at checkout → shows the "needs a pin" prompt and the map; pinning it lets the order proceed.
+  - Set `maps_enabled = false` → the **Delivery** sub-mode disappears (Dine-in/Pickup unaffected) and the account add-address form shows the "temporarily unavailable" note.
 
 ## Notes for the implementer
 
+- **Delivery is Maps-only by design.** There is no typed-address delivery path — a typed address can't be priced/zoned securely. With `maps_enabled` off (or the browser key missing), Delivery is hidden and customers use Pickup.
 - The browser key is referrer-restricted; Maps renders on `localhost:3000` and `zombeans.xyz`. If the map is blank with a console `RefererNotAllowedMapError`, add the current origin to the key's HTTP-referrer list in Google Cloud Console.
-- `place_order` is authoritative for the charged fee; the client quote is display-only. The manual checklist's "fee on tracking matches" step is the parity check between `lib/delivery.ts` and the SQL `delivery_quote`.
-- **Follow-up (not in this plan):** persist `lat`/`lng`/`google_place_id` on `customer_addresses` and reuse `DeliveryMapPicker` on the account page so saved addresses re-quote precisely. Today saved addresses keep using their stored `tier`.
+- `place_order` is authoritative for the charged fee; the client quote and any stored saved-address `tier` are display-only. The "fee on tracking matches" checklist step is the parity check between `lib/delivery.ts` and the SQL `delivery_quote`.
+- Saved-address `tier` is now **server-derived from coordinates** at save time (`addAddress` calls `delivery_quote`); the client never supplies a tier.
