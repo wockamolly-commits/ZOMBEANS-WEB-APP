@@ -43,3 +43,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# skillui / impeccable design tooling (generated, local-only)
+/notion-design/
+/.claude/skills/

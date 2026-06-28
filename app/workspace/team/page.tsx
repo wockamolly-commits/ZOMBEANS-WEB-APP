@@ -52,24 +52,49 @@ export default async function TeamPage() {
                 key={member.id}
                 className="border-b border-zb-sage/20 bg-zb-primary-strong/45 p-4 last:border-b-0"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{member.display_name}</p>
-                      <span className="rounded-full bg-zb-bone/10 px-2 py-0.5 text-[10px] font-bold uppercase text-zb-bone">
-                        {roleLabel}
-                      </span>
-                      {!member.is_active && (
-                        <span className="text-xs text-zb-danger">Revoked</span>
-                      )}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span
+                      aria-hidden
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-zb-bone/12 font-display text-base text-zb-bone ring-1 ring-zb-bone/25"
+                    >
+                      {member.display_name.trim().charAt(0).toUpperCase() || "?"}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold leading-tight">
+                          {member.display_name}
+                        </p>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                            member.role === "admin"
+                              ? "bg-zb-bone text-zb-primary-dark"
+                              : "bg-zb-bone/12 text-zb-bone ring-1 ring-zb-bone/25"
+                          }`}
+                        >
+                          {roleLabel}
+                        </span>
+                        {!member.is_active && (
+                          <span className="rounded-full bg-zb-danger/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zb-danger">
+                            Revoked
+                          </span>
+                        )}
+                      </div>
+                      {member.full_name &&
+                        member.full_name !== member.display_name && (
+                          <p className="text-sm text-zb-cream/70">
+                            {member.full_name}
+                          </p>
+                        )}
+                      <p className="truncate text-sm text-zb-cream/55">
+                        {member.email}
+                      </p>
                     </div>
-                    {member.full_name && member.full_name !== member.display_name && (
-                      <p className="text-sm text-zb-cream/70">{member.full_name}</p>
-                    )}
-                    <p className="text-sm text-zb-cream/55">{member.email}</p>
                   </div>
                   {member.id === current.id ? (
-                    <span className="text-xs text-zb-cream/45">Your account</span>
+                    <span className="shrink-0 text-xs text-zb-cream/45">
+                      Your account
+                    </span>
                   ) : (
                     <RevokeStaffAccessForm profileId={member.id} />
                   )}
