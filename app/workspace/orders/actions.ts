@@ -69,6 +69,7 @@ export async function setOrderStatus(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }
@@ -92,6 +93,7 @@ export async function recordPayment(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }
@@ -115,6 +117,7 @@ export async function assignRider(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   return { ok: true };
 }
 
@@ -133,6 +136,7 @@ export async function advanceOrder(orderId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }

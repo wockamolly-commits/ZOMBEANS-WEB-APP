@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ClipboardList,
   ExternalLink,
+  History,
   LayoutDashboard,
   MenuSquare,
   UserRound,
@@ -19,6 +20,7 @@ export const dynamic = "force-dynamic";
 const NAV = [
   { href: "/workspace", label: "Dashboard", icon: LayoutDashboard },
   { href: "/workspace/orders", label: "Orders", icon: ClipboardList },
+  { href: "/workspace/orders/history", label: "Order History", icon: History },
 ];
 
 export default async function AdminLayout({
@@ -32,7 +34,7 @@ export default async function AdminLayout({
     : null;
   const nav = [
     ...(hasStaffPermission(profile, "dashboard:view") ? [NAV[0]] : []),
-    ...(hasStaffPermission(profile, "orders:view") ? [NAV[1]] : []),
+    ...(hasStaffPermission(profile, "orders:view") ? [NAV[1], NAV[2]] : []),
     ...(hasStaffPermission(profile, "menu:view")
       ? [{ href: "/workspace/menu", label: "Menu", icon: MenuSquare }]
       : []),
@@ -54,18 +56,15 @@ export default async function AdminLayout({
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
             <Logo href="/workspace" />
-            <span className="hidden rounded-full border border-zb-bone/40 bg-zb-bone/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-zb-bone sm:inline">
-              {roleLabel}
-            </span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <Link
               href="/workspace/account"
-              className="hidden text-zb-cream/65 transition hover:text-zb-cream sm:inline"
+              className="hidden items-center gap-2 text-zb-cream/65 transition hover:text-zb-cream sm:inline-flex"
             >
-              {profile.display_name}
-              <span className="ml-1 text-zb-cream/40">
-                ({roleLabel.toLowerCase()})
+              <span className="max-w-40 truncate">{profile.display_name}</span>
+              <span className="rounded-full border border-zb-bone/40 bg-zb-bone/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-zb-bone">
+                {roleLabel}
               </span>
             </Link>
             <AdminSignOut />

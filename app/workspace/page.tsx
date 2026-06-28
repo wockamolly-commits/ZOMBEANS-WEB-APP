@@ -3,18 +3,10 @@ import { ArrowRight } from "lucide-react";
 import { requireStaffPermission } from "@/lib/admin";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
+import { manilaTodayStartISO } from "@/lib/admin-order-dates";
 import type { OrderStatus } from "@/app/workspace/orders/actions";
 
 export const dynamic = "force-dynamic";
-
-// Start of "today" in Asia/Manila (UTC+8, no DST), as a UTC ISO string.
-function manilaTodayStartISO(): string {
-  const ph = new Date(Date.now() + 8 * 3600 * 1000);
-  const midnightUtc =
-    Date.UTC(ph.getUTCFullYear(), ph.getUTCMonth(), ph.getUTCDate()) -
-    8 * 3600 * 1000;
-  return new Date(midnightUtc).toISOString();
-}
 
 const ACTIVE: OrderStatus[] = ["accepted", "preparing", "ready", "out_for_delivery"];
 
