@@ -5,12 +5,17 @@ import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
 import { StoreClosedNotice } from "@/components/shop/StoreClosedNotice";
-import { MENU_GROUPS, getGroupItems } from "@/lib/menu-static";
+import {
+  getStorefrontGroupItems,
+  getStorefrontMenuModel,
+} from "@/lib/storefront-menu";
 
 export const metadata = { title: "Our Menu" };
 export const dynamic = "force-dynamic";
 
-export default function MenuLandingPage() {
+export default async function MenuLandingPage() {
+  const menu = await getStorefrontMenuModel();
+
   return (
     <>
       <Header />
@@ -32,8 +37,11 @@ export default function MenuLandingPage() {
             <StoreClosedNotice />
             <KitchenClosingBanner />
             <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-              {MENU_GROUPS.map((group) => {
-                const count = getGroupItems(group).length;
+              {menu.groups.map((group) => {
+                const count = getStorefrontGroupItems(
+                  group,
+                  menu.categories
+                ).length;
                 return (
                   <Link
                     key={group.slug}
