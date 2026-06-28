@@ -20,7 +20,12 @@ export type PlaceOrderInput = {
     city?: string;
     landmark?: string;
     deliveryNotes?: string;
-    tier: "tier-2" | "tier-4" | "tier-6";
+    lat?: number;
+    lng?: number;
+    googlePlaceId?: string;
+    // Legacy manual-picker tier; ignored by place_order (kept for the
+    // maps_enabled=false fallback path).
+    tier?: "tier-2" | "tier-4" | "tier-6";
   };
   paymentMethod: "cash" | "gcash" | "maya" | "card";
   isTestOrder?: boolean;
@@ -100,6 +105,9 @@ export async function placeOrder(
             city: input.delivery.city ?? "San Carlos City",
             landmark: input.delivery.landmark,
             delivery_notes: input.delivery.deliveryNotes,
+            lat: input.delivery.lat,
+            lng: input.delivery.lng,
+            google_place_id: input.delivery.googlePlaceId,
             tier: input.delivery.tier,
           }
         : null,
@@ -129,12 +137,16 @@ export async function placeOrder(
     const message = inactiveMatch
       ? `${inactiveMatch[1]} is unavailable right now. Please remove it from your cart or choose another item.`
       : {
-      AUTH_REQUIRED: "Please sign in to place a delivery order.",
-      STAFF_ORDERING_FORBIDDEN:
-        "Staff accounts cannot place webstore orders. Please use a separate customer account for personal purchases.",
-      SUPER_ADMIN_REQUIRED:
-        "Only the Super Admin can place an order from an operations account.",
-    }[error.message] ?? error.message;
+          AUTH_REQUIRED: "Please sign in to place a delivery order.",
+          OUT_OF_ZONE:
+            "That address is outside our 6 km delivery zone. Please switch to pickup - your cart is saved.",
+          MISSING_DELIVERY_LOCATION:
+            "Please pick your delivery location on the map so we can confirm the fee.",
+          STAFF_ORDERING_FORBIDDEN:
+            "Staff accounts cannot place webstore orders. Please use a separate customer account for personal purchases.",
+          SUPER_ADMIN_REQUIRED:
+            "Only the Super Admin can place an order from an operations account.",
+        }[error.message] ?? error.message;
     return { ok: false, error: message };
   }
 
@@ -148,4 +160,51 @@ export async function placeOrder(
 
 function allowsModifierQuantity(name: string) {
   return name.trim().toLowerCase() === "espresso";
+}
+
+export type DeliveryQuoteResult =
+  | {
+      ok: true;
+      inZone: boolean;
+      distanceKm: number;
+      tier: string | null;
+      feeCents: number | null;
+    }
+  | { ok: false; error: string };
+
+export async function quoteDelivery(input: {
+  lat: number;
+  lng: number;
+}): Promise<DeliveryQuoteResult> {
+  if (
+    typeof input.lat !== "number" ||
+    typeof input.lng !== "number" ||
+    Number.isNaN(input.lat) ||
+    Number.isNaN(input.lng)
+  ) {
+    return { ok: false, error: "Invalid location." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("delivery_quote", {
+    p_lat: input.lat,
+    p_lng: input.lng,
+  });
+  if (error || !data || !data[0]) {
+    return { ok: false, error: "Could not calculate the delivery fee." };
+  }
+
+  const row = data[0] as {
+    in_zone: boolean;
+    distance_km: number;
+    tier: string | null;
+    fee_cents: number | null;
+  };
+  return {
+    ok: true,
+    inZone: row.in_zone,
+    distanceKm: Number(row.distance_km),
+    tier: row.tier,
+    feeCents: row.fee_cents === null ? null : Number(row.fee_cents),
+  };
 }
