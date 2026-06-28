@@ -29,6 +29,13 @@ type Quote =
   | { state: "in_zone"; distanceKm: number; feeCents: number }
   | { state: "out_of_zone"; distanceKm: number };
 
+type LocationStatus =
+  | { state: "idle" }
+  | { state: "detecting" }
+  | { state: "detected" }
+  | { state: "denied" }
+  | { state: "unavailable" };
+
 type AddressParts = {
   street: string;
   barangay: string | null;
@@ -50,6 +57,21 @@ function pickPlaceComponent(
 ): string | null {
   return components?.find((component) => component.types.includes(type))
     ?.longText ?? null;
+}
+
+function locationHelpText(status: LocationStatus): string {
+  switch (status.state) {
+    case "detecting":
+      return "Detecting your current location...";
+    case "detected":
+      return "Detected your location. Drag the pin if it needs a small adjustment.";
+    case "denied":
+      return "Location permission was denied. Search above or drag the pin manually.";
+    case "unavailable":
+      return "Current location is unavailable. Search above or drag the pin manually.";
+    case "idle":
+      return "Search above or drag the pin to your exact location.";
+  }
 }
 
 export function DeliveryMapPicker({
@@ -74,6 +96,9 @@ export function DeliveryMapPicker({
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [quote, setQuote] = useState<Quote>({ state: "idle" });
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>({
+    state: "idle",
+  });
   const partsRef = useRef<AddressParts>({
     street: "",
     barangay: null,
@@ -135,7 +160,10 @@ export function DeliveryMapPicker({
         const { results } = await geocoder.geocode({ location: { lat, lng } });
         const best = results[0];
         partsRef.current = {
-          street: best?.formatted_address ?? partsRef.current.street,
+          street:
+            best?.formatted_address ||
+            partsRef.current.street ||
+            "Pinned location",
           barangay:
             pickComponent(best?.address_components, "sublocality_level_1") ??
             pickComponent(best?.address_components, "neighborhood") ??
@@ -146,11 +174,43 @@ export function DeliveryMapPicker({
           placeId: best?.place_id ?? null,
         };
       } catch {
-        // Keep prior parts; the quote still uses coordinates.
+        partsRef.current = {
+          ...partsRef.current,
+          street: partsRef.current.street || "Pinned location",
+        };
       }
     }
 
     await runQuote(lat, lng);
+  }
+
+  function detectCurrentLocation(
+    map: google.maps.Map,
+    marker: google.maps.Marker
+  ) {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus({ state: "unavailable" });
+      return;
+    }
+
+    setLocationStatus({ state: "detecting" });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        map.setCenter({ lat, lng });
+        map.setZoom(17);
+        marker.setPosition({ lat, lng });
+        setLocationStatus({ state: "detected" });
+        void reverseGeocode(lat, lng);
+      },
+      (error) => {
+        setLocationStatus({
+          state: error.code === error.PERMISSION_DENIED ? "denied" : "unavailable",
+        });
+      },
+      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
+    );
   }
 
   useEffect(() => {
@@ -226,6 +286,7 @@ export function DeliveryMapPicker({
         });
 
         setReady(true);
+        detectCurrentLocation(map, marker);
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -257,9 +318,7 @@ export function DeliveryMapPicker({
         aria-label="Delivery location map"
       />
       <p className="text-xs text-zb-cream/50">
-        {ready
-          ? "Search above or drag the pin to your exact location."
-          : "Loading map..."}
+        {ready ? locationHelpText(locationStatus) : "Loading map..."}
       </p>
 
       {quote.state === "in_zone" && (
