@@ -20,10 +20,14 @@ import { RiderAssignmentControl } from "@/components/admin/RiderAssignmentContro
 import {
   advanceOrder,
   recordPayment,
-  setOrderStatus,
+  rejectOrder,
   type ActionResult,
   type OrderStatus,
 } from "@/app/workspace/orders/actions";
+import {
+  ORDER_REJECTION_REASONS,
+  type OrderRejectionReason,
+} from "@/lib/order-rejection";
 
 export type RiderOption = {
   id: string;
@@ -55,6 +59,13 @@ export type AdminOrder = {
     variation: string;
     options: string[];
   }>;
+  deliveryAddress: {
+    submitted: string;
+    landmark: string | null;
+    notes: string | null;
+    detected: string;
+    googlePlaceId: string | null;
+  } | null;
   payment: { method: string; status: string } | null;
   assignment: RiderAssignment | null;
 };
@@ -78,6 +89,9 @@ const ACTIVE_STATUSES: OrderStatus[] = [
 ];
 
 function nextAction(order: AdminOrder) {
+  const isCashDelivery =
+    order.service_mode === "delivery" && order.payment?.method === "cash";
+
   if (order.status === "pending" || order.status === "accepted") {
     return { label: "Start preparing", disabled: false };
   }
@@ -97,6 +111,8 @@ function nextAction(order: AdminOrder) {
     };
   }
   if (order.status === "out_for_delivery") {
+    if (isCashDelivery) return null;
+
     return {
       label:
         order.payment?.method === "cash" && order.payment.status !== "paid"
@@ -109,6 +125,10 @@ function nextAction(order: AdminOrder) {
 }
 
 function canRecordManualPayment(order: AdminOrder) {
+  if (order.service_mode === "delivery" && order.payment?.method === "cash") {
+    return false;
+  }
+
   return order.status === "ready" || order.status === "out_for_delivery";
 }
 
@@ -126,6 +146,39 @@ function formatAge(ms: number) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
   return rest ? `${hours}h ${rest}m` : `${hours}h`;
+}
+
+function deliveryLocationLabel(order: AdminOrder) {
+  const address = order.deliveryAddress;
+  if (!address) return null;
+  return (
+    <div className="space-y-1.5 rounded-md bg-zb-primary/50 px-2 py-1.5 text-zb-cream/60">
+      <p>
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-zb-cream/35">
+          Submitted address
+        </span>
+        {address.submitted}
+        {address.landmark && (
+          <span className="block text-[11px] text-zb-cream/40">
+            Landmark: {address.landmark}
+          </span>
+        )}
+        {address.notes && (
+          <span className="block text-[11px] text-zb-cream/40">
+            Notes: {address.notes}
+          </span>
+        )}
+      </p>
+      <p>
+        <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-zb-cream/35">
+          Auto-detected pin
+        </span>
+        <span className="font-mono-tabular text-zb-cream/70">
+          {address.detected}
+        </span>
+      </p>
+    </div>
+  );
 }
 
 /** Live, ticking elapsed time. Returns null until mounted to avoid a
@@ -154,14 +207,20 @@ export function OrderCard({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState("");
+  const [selectedReason, setSelectedReason] =
+    useState<OrderRejectionReason | null>(null);
+  const [rejectionNote, setRejectionNote] = useState("");
 
   function run(fn: () => Promise<ActionResult>) {
     setError(null);
     startTransition(async () => {
       const res = await fn();
       if (!res.ok) setError(res.error);
-      else setRejecting(false);
+      else {
+        setRejecting(false);
+        setSelectedReason(null);
+        setRejectionNote("");
+      }
     });
   }
 
@@ -262,12 +321,14 @@ export function OrderCard({
             <Clock className="size-3" /> Pickup {formatClock(order.pickup_time)}
           </p>
         )}
-        {order.notes && (
+        {order.deliveryAddress ? (
+          deliveryLocationLabel(order)
+        ) : order.notes ? (
           <p className="flex items-start gap-1.5 rounded-md bg-zb-primary/50 px-2 py-1.5 text-zb-cream/60">
             <MapPin className="mt-0.5 size-3 shrink-0 text-zb-sage" />
             <span className="min-w-0">{order.notes}</span>
           </p>
-        )}
+        ) : null}
       </div>
 
       {/* Total + payment */}
@@ -311,25 +372,56 @@ export function OrderCard({
       {/* Actions */}
       {order.status === "pending" && rejecting ? (
         <div className="mt-3 flex flex-col gap-2">
-          <input
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Reason (optional)"
-            autoFocus
-            className="w-full rounded-md border border-zb-sage/30 bg-zb-primary px-2.5 py-1.5 text-xs text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none"
+          <div className="grid grid-cols-2 gap-1.5">
+            {ORDER_REJECTION_REASONS.map((preset) => {
+              const selected = selectedReason === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  disabled={pending}
+                  onClick={() => setSelectedReason(preset)}
+                  className={`rounded-md border px-2 py-1.5 text-left text-[11px] font-semibold leading-tight transition ${
+                    selected
+                      ? "border-zb-bone bg-zb-bone text-zb-primary-dark"
+                      : "border-zb-sage/25 bg-zb-primary/55 text-zb-cream/75 hover:border-zb-sage/45 hover:text-zb-cream"
+                  }`}
+                >
+                  {preset}
+                </button>
+              );
+            })}
+          </div>
+          <textarea
+            value={rejectionNote}
+            onChange={(event) => setRejectionNote(event.target.value)}
+            placeholder="Optional note"
+            rows={2}
+            className="w-full resize-none rounded-md border border-zb-sage/30 bg-zb-primary px-2.5 py-1.5 text-xs text-zb-cream placeholder:text-zb-cream/35 focus:border-zb-bone focus:outline-none"
           />
           <div className="flex gap-2">
             <ActionBtn
               danger
               grow
-              disabled={pending}
+              disabled={pending || !selectedReason}
               onClick={() =>
-                run(() => setOrderStatus(order.id, "rejected", reason))
+                selectedReason
+                  ? run(() =>
+                      rejectOrder(order.id, selectedReason, rejectionNote)
+                    )
+                  : undefined
               }
             >
               Confirm reject
             </ActionBtn>
-            <ActionBtn disabled={pending} onClick={() => setRejecting(false)}>
+            <ActionBtn
+              disabled={pending}
+              onClick={() => {
+                setRejecting(false);
+                setSelectedReason(null);
+                setRejectionNote("");
+              }}
+            >
               Cancel
             </ActionBtn>
           </div>

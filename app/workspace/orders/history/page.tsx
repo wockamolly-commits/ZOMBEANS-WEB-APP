@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Clock,
   CreditCard,
+  MapPin,
   ReceiptText,
   Search,
   UserRound,
@@ -56,6 +57,10 @@ type HistoryRow = {
       quantity: number | null;
     }> | null;
   }> | null;
+  delivery_addresses:
+    | Array<DeliveryAddress>
+    | DeliveryAddress
+    | null;
   payments: Array<{
     method: string;
     status: string;
@@ -63,6 +68,20 @@ type HistoryRow = {
     created_at: string;
     paid_at: string | null;
   }> | null;
+};
+
+type DeliveryAddress = {
+  street: string;
+  barangay: string | null;
+  city: string;
+  landmark: string | null;
+  delivery_notes: string | null;
+  lat: number | string;
+  lng: number | string;
+  google_place_id: string | null;
+  detected_lat: number | string | null;
+  detected_lng: number | string | null;
+  detected_address: string | null;
 };
 
 const HISTORY_STATUSES: HistoryStatus[] = ["completed", "rejected", "cancelled"];
@@ -109,6 +128,34 @@ function serviceLabel(mode: HistoryRow["service_mode"]): string {
   return mode[0]?.toUpperCase() + mode.slice(1);
 }
 
+function firstEmbedded<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function submittedAddress(address: DeliveryAddress): string {
+  return [address.street, address.barangay, address.city]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function coordsLabel(lat: number | string, lng: number | string): string | null {
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return null;
+  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
+}
+
+function detectedLocation(address: DeliveryAddress): string {
+  return (
+    address.detected_address ??
+    (address.detected_lat != null && address.detected_lng != null
+      ? coordsLabel(address.detected_lat, address.detected_lng)
+      : coordsLabel(address.lat, address.lng)) ??
+    "Not available"
+  );
+}
+
 function matchesSearch(row: HistoryRow, q: string): boolean {
   if (!q) return true;
   const haystack = [
@@ -116,6 +163,11 @@ function matchesSearch(row: HistoryRow, q: string): boolean {
     row.customer_name,
     row.customer_phone,
     row.notes,
+    firstEmbedded(row.delivery_addresses)?.street,
+    firstEmbedded(row.delivery_addresses)?.barangay,
+    firstEmbedded(row.delivery_addresses)?.landmark,
+    firstEmbedded(row.delivery_addresses)?.delivery_notes,
+    firstEmbedded(row.delivery_addresses)?.detected_address,
     row.payments?.[0]?.method,
     row.payments?.[0]?.reference,
     ...(row.order_items ?? []).map((item) => item.item_name_snapshot),
@@ -157,6 +209,11 @@ export default async function OrderHistoryPage({
          item_name_snapshot,
          variation_label_snapshot,
          order_item_options ( name_snapshot, quantity )
+       ),
+       delivery_addresses (
+         street, barangay, city, landmark, delivery_notes,
+         lat, lng, google_place_id,
+         detected_lat, detected_lng, detected_address
        ),
        payments ( method, status, reference, created_at, paid_at )`
     )
@@ -297,6 +354,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function HistoryCard({ order }: { order: HistoryRow }) {
   const payment = order.payments?.[0] ?? null;
+  const deliveryAddress = firstEmbedded(order.delivery_addresses);
   const closedAt =
     order.status === "completed" ? order.completed_at : order.rejected_at;
   const tone =
@@ -407,6 +465,35 @@ function HistoryCard({ order }: { order: HistoryRow }) {
               value={formatDateTime(payment?.created_at ?? null)}
             />
           </div>
+
+          {order.service_mode === "delivery" && deliveryAddress && (
+            <div className="grid gap-3 rounded-lg bg-zb-primary/45 p-3 text-xs text-zb-cream/65 sm:grid-cols-2">
+              <div>
+                <p className="flex items-center gap-1.5 font-semibold uppercase tracking-[0.12em] text-zb-cream/35">
+                  <MapPin className="size-3.5 text-zb-sage" />
+                  Submitted address
+                </p>
+                <p className="mt-1 text-sm text-zb-cream/75">
+                  {submittedAddress(deliveryAddress)}
+                </p>
+                {deliveryAddress.landmark && (
+                  <p className="mt-1">Landmark: {deliveryAddress.landmark}</p>
+                )}
+                {deliveryAddress.delivery_notes && (
+                  <p className="mt-1">Notes: {deliveryAddress.delivery_notes}</p>
+                )}
+              </div>
+              <div>
+                <p className="flex items-center gap-1.5 font-semibold uppercase tracking-[0.12em] text-zb-cream/35">
+                  <MapPin className="size-3.5 text-zb-bone" />
+                  Auto-detected location
+                </p>
+                <p className="mt-1 text-sm text-zb-cream/75">
+                  {detectedLocation(deliveryAddress)}
+                </p>
+              </div>
+            </div>
+          )}
 
           {(order.notes || order.rejected_reason) && (
             <div className="rounded-md bg-zb-primary/70 px-3 py-2 text-xs text-zb-cream/65">

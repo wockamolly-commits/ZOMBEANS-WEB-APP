@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader } from "@googlemaps/js-api-loader";
-import { MapPin } from "lucide-react";
+import { LocateFixed, MapPin } from "lucide-react";
 import { quoteDelivery } from "@/app/actions/checkout";
 import {
   haversineKm,
@@ -74,23 +74,37 @@ function locationHelpText(status: LocationStatus): string {
   }
 }
 
+export type DetectedGps = { lat: number; lng: number; address: string | null };
+
 export function DeliveryMapPicker({
   apiKey,
   storeLat,
   storeLng,
   tiers,
   maxKm,
+  initialLat,
+  initialLng,
   onChange,
+  onGpsDetected,
 }: {
   apiKey: string;
   storeLat: number;
   storeLng: number;
   tiers: DeliveryTier[];
   maxKm: number;
+  // When provided, the map opens centered on this pin (e.g. a saved address)
+  // instead of auto-detecting. The fee is shown for it, but onChange is not
+  // emitted unless the customer re-pins, so the saved address stays in effect.
+  initialLat?: number;
+  initialLng?: number;
   onChange: (details: DeliveryDetails | null) => void;
+  // Reports the raw device GPS reading (separate from the chosen pin) so the
+  // order can store the auto-detected location alongside the delivery address.
+  onGpsDetected?: (gps: DetectedGps) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const [ready, setReady] = useState(false);
@@ -106,7 +120,9 @@ export function DeliveryMapPicker({
     placeId: null,
   });
 
-  async function runQuote(lat: number, lng: number) {
+  // emit=false shows the fee for a pin without pushing it up as the chosen
+  // delivery location — used to preview a saved address without overriding it.
+  async function runQuote(lat: number, lng: number, emit = true) {
     const local = resolveDeliveryQuote(
       haversineKm(storeLat, storeLng, lat, lng),
       tiers,
@@ -125,13 +141,13 @@ export function DeliveryMapPicker({
     const result = await quoteDelivery({ lat, lng });
     if (!result.ok) {
       setQuote({ state: "idle" });
-      onChange(null);
+      if (emit) onChange(null);
       return;
     }
 
     if (!result.inZone || result.tier === null || result.feeCents === null) {
       setQuote({ state: "out_of_zone", distanceKm: result.distanceKm });
-      onChange(null);
+      if (emit) onChange(null);
       return;
     }
 
@@ -140,17 +156,54 @@ export function DeliveryMapPicker({
       distanceKm: result.distanceKm,
       feeCents: result.feeCents,
     });
-    onChange({
-      lat,
-      lng,
-      googlePlaceId: partsRef.current.placeId,
-      street: partsRef.current.street,
-      barangay: partsRef.current.barangay,
-      city: partsRef.current.city,
-      tier: result.tier,
-      feeCents: result.feeCents,
-      distanceKm: result.distanceKm,
-    });
+    if (emit)
+      onChange({
+        lat,
+        lng,
+        googlePlaceId: partsRef.current.placeId,
+        street: partsRef.current.street,
+        barangay: partsRef.current.barangay,
+        city: partsRef.current.city,
+        tier: result.tier,
+        feeCents: result.feeCents,
+        distanceKm: result.distanceKm,
+      });
+  }
+
+  // Reverse-geocode without mutating partsRef (which describes the pin).
+  async function geocodeOnly(lat: number, lng: number): Promise<string | null> {
+    const geocoder = geocoderRef.current;
+    if (!geocoder) return null;
+    try {
+      const { results } = await geocoder.geocode({ location: { lat, lng } });
+      return results[0]?.formatted_address ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Read the device GPS for the order's auto-detected location WITHOUT moving
+  // the pin (used when the pin is already placed on a saved address).
+  function reportGpsOnly() {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus({ state: "unavailable" });
+      return;
+    }
+    setLocationStatus({ state: "detecting" });
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setLocationStatus({ state: "detected" });
+        onGpsDetected?.({ lat, lng, address: await geocodeOnly(lat, lng) });
+      },
+      (error) => {
+        setLocationStatus({
+          state: error.code === error.PERMISSION_DENIED ? "denied" : "unavailable",
+        });
+      },
+      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
+    );
   }
 
   async function reverseGeocode(lat: number, lng: number) {
@@ -195,14 +248,17 @@ export function DeliveryMapPicker({
 
     setLocationStatus({ state: "detecting" });
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         map.setCenter({ lat, lng });
         map.setZoom(17);
         marker.setPosition({ lat, lng });
         setLocationStatus({ state: "detected" });
-        void reverseGeocode(lat, lng);
+        await reverseGeocode(lat, lng);
+        // The pin sits on the device location at this point, so the geocoded
+        // address describes the GPS reading itself.
+        onGpsDetected?.({ lat, lng, address: partsRef.current.street || null });
       },
       (error) => {
         setLocationStatus({
@@ -211,6 +267,16 @@ export function DeliveryMapPicker({
       },
       { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
     );
+  }
+
+  function locateCustomerPin() {
+    const map = mapInstanceRef.current;
+    const marker = markerRef.current;
+    if (!map || !marker) {
+      setLocationStatus({ state: "unavailable" });
+      return;
+    }
+    detectCurrentLocation(map, marker);
   }
 
   useEffect(() => {
@@ -230,6 +296,7 @@ export function DeliveryMapPicker({
           zoomControl: true,
         });
         const marker = new google.maps.Marker({ map, draggable: true });
+        mapInstanceRef.current = map;
         markerRef.current = marker;
         geocoderRef.current = new google.maps.Geocoder();
 
@@ -286,7 +353,18 @@ export function DeliveryMapPicker({
         });
 
         setReady(true);
-        detectCurrentLocation(map, marker);
+        if (initialLat != null && initialLng != null) {
+          // Saved address: center + pin on it and preview its fee, but don't
+          // emit (the saved address stays in effect unless the customer re-pins).
+          map.setCenter({ lat: initialLat, lng: initialLng });
+          map.setZoom(16);
+          marker.setPosition({ lat: initialLat, lng: initialLng });
+          void runQuote(initialLat, initialLng, false);
+          // Still record the device GPS for the order's detected location.
+          reportGpsOnly();
+        } else {
+          detectCurrentLocation(map, marker);
+        }
       })
       .catch(() => {
         if (!cancelled) setLoadError(true);
@@ -312,11 +390,23 @@ export function DeliveryMapPicker({
         ref={autocompleteRef}
         className="min-h-12 w-full rounded-xl border border-zb-sage/35 bg-zb-primary-dark/55 px-3 py-1 text-zb-primary-dark focus-within:border-zb-bone focus-within:outline-none focus-within:ring-2 focus-within:ring-zb-bone/20"
       />
-      <div
-        ref={mapRef}
-        className="h-64 w-full overflow-hidden rounded-xl border border-zb-sage/35 bg-zb-primary-dark/40"
-        aria-label="Delivery location map"
-      />
+      <div className="relative">
+        <div
+          ref={mapRef}
+          className="h-64 w-full overflow-hidden rounded-xl border border-zb-sage/35 bg-zb-primary-dark/40"
+          aria-label="Delivery location map"
+        />
+        <button
+          type="button"
+          onClick={locateCustomerPin}
+          disabled={!ready || locationStatus.state === "detecting"}
+          className="absolute bottom-3 left-3 inline-flex size-10 items-center justify-center rounded-xl border border-black/10 bg-white text-[#4285f4] shadow-md shadow-black/20 transition hover:bg-slate-50 disabled:opacity-60"
+          aria-label="Use current location"
+          title="Use current location"
+        >
+          <LocateFixed className="size-5" strokeWidth={2.4} />
+        </button>
+      </div>
       <p className="text-xs text-zb-cream/50">
         {ready ? locationHelpText(locationStatus) : "Loading map..."}
       </p>

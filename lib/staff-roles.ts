@@ -7,7 +7,7 @@ export const STAFF_ROLES = {
   rider: {
     label: "Rider",
     description: "Handle assigned deliveries and delivery status updates.",
-    available: false,
+    available: true,
   },
 } as const;
 
@@ -66,10 +66,8 @@ export type GrantablePermission = {
   section: "Dashboard" | "Orders" | "Menu" | "Store";
 };
 
-// Permissions a Super Admin may grant/revoke per staff member. `team:manage`
-// and the rider `deliveries:*` permissions are intentionally excluded: team
-// management stays Super-Admin-exclusive, and the rider role is not yet
-// available.
+// Permissions a Super Admin may grant/revoke per cashier. `team:manage` stays
+// Super-Admin-exclusive; rider delivery permissions come from the Rider role.
 export const GRANTABLE_PERMISSIONS: readonly GrantablePermission[] = [
   {
     permission: "dashboard:view",

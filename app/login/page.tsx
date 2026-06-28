@@ -29,6 +29,7 @@ export default async function LoginPage({
   } = await adminSupabase.auth.getUser();
   if (adminUser) {
     const profile = await getTeamProfileForUser(adminSupabase, adminUser.id);
+    if (profile?.role === "rider") redirect("/rider");
     if (profile && isOperationsRole(profile.role)) redirect(OPERATIONS_HOME);
   }
 

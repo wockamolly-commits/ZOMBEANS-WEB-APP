@@ -50,14 +50,22 @@ export async function updateProfile(
 
 export type AddressState = { status: "idle" | "added" | "error"; message?: string };
 
+// Coordinates are optional: a manually typed address can be saved without a map
+// pin (the classic flow). When the map IS used we capture the coordinates and
+// derive an authoritative tier from them. An empty string coerces to undefined
+// rather than 0 so a manual-only save isn't treated as a (0,0) location.
+const optionalCoord = z.preprocess(
+  (v) => (v === "" || v == null ? undefined : v),
+  z.coerce.number().optional()
+);
 const addressSchema = z.object({
   label: z.string().trim().max(40).optional(),
   street: z.string().trim().min(1, { error: "Street is required." }),
   barangay: z.string().trim().optional(),
   city: z.string().trim().optional(),
   landmark: z.string().trim().optional(),
-  lat: z.coerce.number(),
-  lng: z.coerce.number(),
+  lat: optionalCoord,
+  lng: optionalCoord,
   googlePlaceId: z.string().trim().optional(),
 });
 
@@ -84,23 +92,31 @@ export async function addAddress(
 
   const supabase = await createClient();
 
-  // Derive tier + zone server-side from the coordinates (never trust a client
-  // tier). Reject out-of-zone saves.
-  const { data: quote, error: quoteError } = await supabase.rpc("delivery_quote", {
-    p_lat: parsed.data.lat,
-    p_lng: parsed.data.lng,
-  });
-  const q = quote?.[0] as
-    | { in_zone: boolean; tier: string | null }
-    | undefined;
-  if (quoteError || !q) {
-    return { status: "error", message: "Could not check that location." };
-  }
-  if (!q.in_zone) {
-    return {
-      status: "error",
-      message: "That address is outside our 6 km delivery zone.",
-    };
+  const hasCoords = parsed.data.lat != null && parsed.data.lng != null;
+
+  // When the map was used, derive tier + zone server-side from the coordinates
+  // (never trust a client tier) and reject out-of-zone saves. A manual-only
+  // address saves with no coordinates and a null tier; it gets pinned at
+  // checkout, where the fee is computed from that confirmed location.
+  let tier: string | null = null;
+  if (hasCoords) {
+    const { data: quote, error: quoteError } = await supabase.rpc(
+      "delivery_quote",
+      { p_lat: parsed.data.lat, p_lng: parsed.data.lng }
+    );
+    const q = quote?.[0] as
+      | { in_zone: boolean; tier: string | null }
+      | undefined;
+    if (quoteError || !q) {
+      return { status: "error", message: "Could not check that location." };
+    }
+    if (!q.in_zone) {
+      return {
+        status: "error",
+        message: "That address is outside our 6 km delivery zone.",
+      };
+    }
+    tier = q.tier;
   }
 
   const { error } = await supabase.from("customer_addresses").insert({
@@ -110,9 +126,9 @@ export async function addAddress(
     barangay: parsed.data.barangay || null,
     city: parsed.data.city || "San Carlos City",
     landmark: parsed.data.landmark || null,
-    tier: q.tier,
-    lat: parsed.data.lat,
-    lng: parsed.data.lng,
+    tier,
+    lat: hasCoords ? parsed.data.lat : null,
+    lng: hasCoords ? parsed.data.lng : null,
     google_place_id: parsed.data.googlePlaceId || null,
   });
   if (error) {

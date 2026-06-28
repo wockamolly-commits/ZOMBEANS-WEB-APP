@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  amountUntilFreeDelivery,
+  FREE_DELIVERY_MINIMUM_CENTS,
   haversineKm,
+  qualifiesForFreeDelivery,
   resolveDeliveryQuote,
   type DeliveryTier,
 } from "@/lib/delivery";
@@ -58,5 +61,24 @@ describe("resolveDeliveryQuote", () => {
       tier: null,
       feeCents: null,
     });
+  });
+});
+
+describe("free delivery threshold", () => {
+  it("qualifies delivery subtotals at 750 pesos and above", () => {
+    expect(qualifiesForFreeDelivery(FREE_DELIVERY_MINIMUM_CENTS - 1)).toBe(
+      false
+    );
+    expect(qualifiesForFreeDelivery(FREE_DELIVERY_MINIMUM_CENTS)).toBe(true);
+    expect(qualifiesForFreeDelivery(FREE_DELIVERY_MINIMUM_CENTS + 1)).toBe(
+      true
+    );
+  });
+
+  it("reports the remaining amount needed", () => {
+    expect(amountUntilFreeDelivery(0)).toBe(FREE_DELIVERY_MINIMUM_CENTS);
+    expect(amountUntilFreeDelivery(74_900)).toBe(100);
+    expect(amountUntilFreeDelivery(75_000)).toBe(0);
+    expect(amountUntilFreeDelivery(80_000)).toBe(0);
   });
 });

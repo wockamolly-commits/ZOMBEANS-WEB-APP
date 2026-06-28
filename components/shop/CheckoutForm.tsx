@@ -41,7 +41,11 @@ import {
   type DeliveryDetails,
 } from "@/components/shop/DeliveryMapPicker";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
-import type { DeliveryTier } from "@/lib/delivery";
+import {
+  amountUntilFreeDelivery,
+  qualifiesForFreeDelivery,
+  type DeliveryTier,
+} from "@/lib/delivery";
 import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import type { SavedAddress } from "@/lib/auth";
 
@@ -105,6 +109,11 @@ export function CheckoutForm({
   const [paymentMethod, setPaymentMethod] =
     useState<PlaceOrderInput["paymentMethod"]>("cash");
   const [mapDetails, setMapDetails] = useState<DeliveryDetails | null>(null);
+  const [gps, setGps] = useState<{
+    lat: number;
+    lng: number;
+    address: string | null;
+  } | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [reviewed, setReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -293,11 +302,16 @@ export function CheckoutForm({
   const savedSelected = savedAddresses.find((a) => a.id === selectedAddressId);
   const savedHasCoords =
     savedSelected != null && savedSelected.lat != null && savedSelected.lng != null;
-  const deliveryFee =
+  const quotedDeliveryFee =
     mode === "delivery"
       ? mapDetails?.feeCents ??
         (savedHasCoords ? getDeliveryFeeCents(savedSelected.tier ?? "") : 0)
       : 0;
+  const freeDeliveryEligible =
+    mode === "delivery" && qualifiesForFreeDelivery(subtotal);
+  const deliveryFee = freeDeliveryEligible ? 0 : quotedDeliveryFee;
+  const freeDeliveryRemaining =
+    mode === "delivery" ? amountUntilFreeDelivery(subtotal) : 0;
   // Ready when a saved address already has coordinates, or the map pin produced
   // an in-zone quote (mapDetails is set to null on out-of-zone by the picker).
   const deliveryReady =
@@ -359,6 +373,9 @@ export function CheckoutForm({
                   lat: saved.lat,
                   lng: saved.lng,
                   googlePlaceId: saved.google_place_id ?? undefined,
+                  detectedLat: gps?.lat,
+                  detectedLng: gps?.lng,
+                  detectedAddress: gps?.address ?? undefined,
                 };
               }
               if (mapDetails) {
@@ -370,6 +387,9 @@ export function CheckoutForm({
                   lat: mapDetails.lat,
                   lng: mapDetails.lng,
                   googlePlaceId: mapDetails.googlePlaceId ?? undefined,
+                  detectedLat: gps?.lat,
+                  detectedLng: gps?.lng,
+                  detectedAddress: gps?.address ?? undefined,
                 };
               }
               return undefined;
@@ -678,6 +698,11 @@ export function CheckoutForm({
                           <span className="block rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm transition hover:border-zb-sage peer-checked:border-zb-bone peer-checked:bg-zb-bone/10 peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone">
                             <span className="font-semibold">{a.label || "Address"}</span>
                             <span className="ml-2 text-zb-cream/60">{a.street}{a.barangay ? `, ${a.barangay}` : ""}</span>
+                            {a.landmark && (
+                              <span className="mt-0.5 block text-xs text-zb-cream/45">
+                                Landmark: {a.landmark}
+                              </span>
+                            )}
                           </span>
                         </label>
                       ))}
@@ -696,28 +721,61 @@ export function CheckoutForm({
                     )}
                   </fieldset>
                 )}
-                {(!selectedAddressId || !savedHasCoords) && (
-                  <div className="sm:col-span-2 space-y-3">
-                    {selectedAddressId && !savedHasCoords && (
-                      <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
-                        This saved address needs a pin - drop it on the map to
-                        confirm the delivery fee.
+                <div className="sm:col-span-2 space-y-3">
+                  {selectedAddressId && !savedHasCoords && (
+                    <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+                      This saved address needs a pin - drop it on the map to
+                      confirm the delivery fee.
+                    </p>
+                  )}
+                  {selectedAddressId && savedHasCoords && (
+                    <p className="px-1 text-xs leading-5 text-zb-cream/55">
+                      Showing your saved address on the map. Drag the pin or
+                      search to deliver somewhere else.
+                    </p>
+                  )}
+                  <DeliveryMapPicker
+                    key={selectedAddressId || "new"}
+                    apiKey={mapsApiKey!}
+                    storeLat={storeLat}
+                    storeLng={storeLng}
+                    tiers={deliveryTiers}
+                    maxKm={deliveryMaxKm}
+                    initialLat={savedHasCoords ? savedSelected!.lat! : undefined}
+                    initialLng={savedHasCoords ? savedSelected!.lng! : undefined}
+                    onChange={setMapDetails}
+                    onGpsDetected={setGps}
+                  />
+                  <label className="block text-sm font-medium">
+                    Landmark / delivery notes
+                    <input name="landmark" className={inputClass} placeholder="Near the red gate, unit number, etc." />
+                  </label>
+                </div>
+
+                {/* Two pieces of location ride along with the order: the
+                    delivery address (manual text below / saved / map pin, which
+                    drives the fee) and the device's auto-detected GPS reading
+                    (captured separately, shown here, used only to help the rider
+                    navigate). The manual text never affects pricing. */}
+                <div className="sm:col-span-2 space-y-3">
+                  {gps && (
+                    <div className="rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3">
+                      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-zb-cream/45">
+                        <MapPin className="size-3.5 text-zb-bone" /> Auto-detected
+                        location
                       </p>
-                    )}
-                    <DeliveryMapPicker
-                      apiKey={mapsApiKey!}
-                      storeLat={storeLat}
-                      storeLng={storeLng}
-                      tiers={deliveryTiers}
-                      maxKm={deliveryMaxKm}
-                      onChange={setMapDetails}
-                    />
-                    <label className="block text-sm font-medium">
-                      Landmark / delivery notes
-                      <input name="landmark" className={inputClass} placeholder="Near the red gate, unit number, etc." />
-                    </label>
-                  </div>
-                )}
+                      <p className="mt-1 text-sm leading-6 text-zb-cream/80">
+                        {gps.address ??
+                          `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-zb-cream/45">
+                        Captured from your device and sent with the order to help
+                        the rider find you. We still deliver to the address you
+                        provide.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -767,7 +825,7 @@ export function CheckoutForm({
           <h2 className="font-display text-3xl">YOUR ORDER</h2>
           <Link href="/cart" className="text-xs font-semibold text-zb-bone hover:underline">Edit cart</Link>
         </div>
-        <div className="mt-5 max-h-72 space-y-3 overflow-y-auto pr-1">
+        <div className="checkout-order-scroll mt-5 max-h-72 space-y-3 overflow-y-auto pr-3">
           {lines.map((line) => (
             <div key={line.id} className="grid grid-cols-[3.25rem_1fr_auto] items-center gap-3">
               <div className="relative aspect-square overflow-hidden rounded-lg bg-zb-cream/90">
@@ -795,7 +853,33 @@ export function CheckoutForm({
         </div>
         <div className="mt-5 space-y-3 border-t border-zb-sage/25 pt-4 text-sm">
           <div className="flex justify-between text-zb-cream/65"><span>Subtotal</span><span className="font-mono-tabular text-zb-cream">{formatPeso(subtotal)}</span></div>
-          <div className="flex justify-between text-zb-cream/65"><span>Delivery fee</span><span className="font-mono-tabular text-zb-cream">{deliveryFee ? formatPeso(deliveryFee) : "-"}</span></div>
+          <div className="flex justify-between gap-4 text-zb-cream/65">
+            <span>Delivery fee</span>
+            <span className="text-right font-mono-tabular text-zb-cream">
+              {mode === "delivery" && freeDeliveryEligible ? (
+                <span className="font-sans text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">
+                  Free Delivery
+                </span>
+              ) : deliveryFee ? (
+                formatPeso(deliveryFee)
+              ) : (
+                "-"
+              )}
+            </span>
+          </div>
+          {mode === "delivery" && (
+            <p
+              className={`rounded-lg border px-3 py-2 text-xs leading-5 ${
+                freeDeliveryEligible
+                  ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200"
+                  : "border-zb-bone/30 bg-zb-bone/10 text-zb-cream/70"
+              }`}
+            >
+              {freeDeliveryEligible
+                ? "Free delivery unlocked for this order."
+                : `${formatPeso(freeDeliveryRemaining)} more to unlock free delivery.`}
+            </p>
+          )}
           <div className="flex justify-between border-t border-zb-sage/25 pt-3 text-base font-bold"><span>Total</span><span className="font-mono-tabular text-zb-bone">{formatPeso(total)}</span></div>
         </div>
 

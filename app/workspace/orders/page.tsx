@@ -34,6 +34,34 @@ type Row = {
       quantity: number | null;
     }> | null;
   }> | null;
+  delivery_addresses:
+    | Array<{
+        street: string;
+        barangay: string | null;
+        city: string;
+        landmark: string | null;
+        delivery_notes: string | null;
+        lat: number | string;
+        lng: number | string;
+        google_place_id: string | null;
+        detected_lat: number | string | null;
+        detected_lng: number | string | null;
+        detected_address: string | null;
+      }>
+    | {
+        street: string;
+        barangay: string | null;
+        city: string;
+        landmark: string | null;
+        delivery_notes: string | null;
+        lat: number | string;
+        lng: number | string;
+        google_place_id: string | null;
+        detected_lat: number | string | null;
+        detected_lng: number | string | null;
+        detected_address: string | null;
+      }
+    | null;
   payments: Array<{ method: string; status: string }> | null;
 };
 
@@ -57,6 +85,20 @@ type AssignmentRow = { order_id: string; rider_profile_id: string };
 
 function recentSinceISO(): string {
   return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function firstEmbedded<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function coordsLabel(lat: number | string, lng: number | string): string {
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
+    return "Pin unavailable";
+  }
+  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
 }
 
 const COLUMNS: Array<{
@@ -123,6 +165,7 @@ function toOrder(
   row: Row,
   assignments: Map<string, AdminOrder["assignment"]>
 ): AdminOrder {
+  const deliveryAddress = firstEmbedded(row.delivery_addresses);
   return {
     id: row.id,
     short_code: row.short_code,
@@ -145,6 +188,31 @@ function toOrder(
           : option.name_snapshot
       ),
     })),
+    deliveryAddress: deliveryAddress
+      ? {
+          submitted: [
+            deliveryAddress.street,
+            deliveryAddress.barangay,
+            deliveryAddress.city,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          landmark: deliveryAddress.landmark,
+          notes: deliveryAddress.delivery_notes,
+          // Prefer the separately-captured device GPS reading; fall back to the
+          // delivery coordinates for orders placed before detected_* existed.
+          detected:
+            deliveryAddress.detected_address ??
+            (deliveryAddress.detected_lat != null &&
+            deliveryAddress.detected_lng != null
+              ? coordsLabel(
+                  deliveryAddress.detected_lat,
+                  deliveryAddress.detected_lng
+                )
+              : coordsLabel(deliveryAddress.lat, deliveryAddress.lng)),
+          googlePlaceId: deliveryAddress.google_place_id,
+        }
+      : null,
     payment: row.payments?.[0]
       ? { method: row.payments[0].method, status: row.payments[0].status }
       : null,
@@ -169,6 +237,11 @@ export default async function AdminOrdersPage() {
            item_name_snapshot,
            variation_label_snapshot,
            order_item_options ( name_snapshot, quantity )
+         ),
+         delivery_addresses (
+           street, barangay, city, landmark, delivery_notes,
+           lat, lng, google_place_id,
+           detected_lat, detected_lng, detected_address
          ),
          payments ( method, status )`
       )

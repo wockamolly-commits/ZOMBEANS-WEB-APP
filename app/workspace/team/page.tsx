@@ -99,7 +99,7 @@ export default async function TeamPage() {
                     <RevokeStaffAccessForm profileId={member.id} />
                   )}
                 </div>
-                {member.role !== "admin" &&
+                {member.role === "staff" &&
                   member.is_active &&
                   member.id !== current.id && (
                     <StaffPermissionsForm

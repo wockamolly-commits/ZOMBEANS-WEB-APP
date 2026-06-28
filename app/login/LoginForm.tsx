@@ -30,7 +30,7 @@ function formatRemaining(seconds: number) {
 
 function loginErrorMessage(error: string | null) {
   if (error === "not_authorized") {
-    return "That email is not authorized for the admin dashboard.";
+    return "That email is not authorized for this team area.";
   }
   if (error === "invalid_link") {
     return "That sign-in link is invalid or expired. Request a 6-digit code instead.";

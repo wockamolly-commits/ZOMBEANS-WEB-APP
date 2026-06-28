@@ -15,6 +15,13 @@ import {
 
 export type AuthFlow = "admin" | "customer";
 
+function riderDestination(raw: string | null | undefined): string {
+  const requested = safeNextPath(raw, "/rider");
+  return requested === "/rider" || requested.startsWith("/rider/")
+    ? requested
+    : "/rider";
+}
+
 export async function authenticatedDestination(
   supabase: SupabaseClient,
   requested: string,
@@ -37,6 +44,9 @@ export async function authenticatedDestination(
     }
 
     const profile = await getTeamProfileForUser(supabase, user.id);
+    if (profile?.role === "rider") {
+      return riderDestination(requested);
+    }
     if (profile && isOperationsRole(profile.role)) {
       return operationsDestination(requested);
     }

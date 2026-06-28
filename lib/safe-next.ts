@@ -17,7 +17,9 @@ export function isAdminSurfacePath(path: string): boolean {
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
     pathname === "/workspace" ||
-    pathname.startsWith("/workspace/")
+    pathname.startsWith("/workspace/") ||
+    pathname === "/rider" ||
+    pathname.startsWith("/rider/")
   );
 }
 

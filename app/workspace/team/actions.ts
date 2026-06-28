@@ -87,11 +87,14 @@ export async function inviteStaff(
 
   const invitationId = randomUUID();
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+  const accountRole = role === "rider" ? "rider" : "staff";
+  const landingPath = role === "rider" ? "/rider" : "/workspace";
+
   const created = await admin.from("staff_invitations").insert({
     id: invitationId,
     email,
     display_name: displayName,
-    role: "staff",
+    role: accountRole,
     staff_role: role,
     invited_by_profile_id: actor.id,
     expires_at: expiresAt,
@@ -104,7 +107,7 @@ export async function inviteStaff(
   const redirectUrl = new URL("/auth/invite", await siteUrl());
   redirectUrl.searchParams.set("invitationId", invitationId);
   redirectUrl.searchParams.set("email", email);
-  redirectUrl.searchParams.set("next", "/workspace");
+  redirectUrl.searchParams.set("next", landingPath);
 
   const sent = await admin.auth.admin.inviteUserByEmail(email, {
     redirectTo: redirectUrl.toString(),
@@ -112,6 +115,7 @@ export async function inviteStaff(
       display_name: displayName,
       staff_invitation_id: invitationId,
       staff_role: role,
+      account_role: accountRole,
     },
   });
   if (sent.error) {
@@ -134,6 +138,7 @@ export async function inviteStaff(
         display_name: displayName,
         staff_invitation_id: invitationId,
         staff_role: role,
+        account_role: accountRole,
       },
     });
     if (metadata.error) {
@@ -152,7 +157,7 @@ export async function inviteStaff(
     diff: {
       email,
       display_name: displayName,
-      account_role: "staff",
+      account_role: accountRole,
       staff_role: role,
       expires_at: expiresAt,
     },

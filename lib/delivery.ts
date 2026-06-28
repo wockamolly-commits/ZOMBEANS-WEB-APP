@@ -11,7 +11,16 @@ export type DeliveryQuote =
   | { inZone: false; distanceKm: number; tier: null; feeCents: null };
 
 const EARTH_RADIUS_KM = 6371;
+export const FREE_DELIVERY_MINIMUM_CENTS = 75_000;
 const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+export function qualifiesForFreeDelivery(subtotalCents: number): boolean {
+  return subtotalCents >= FREE_DELIVERY_MINIMUM_CENTS;
+}
+
+export function amountUntilFreeDelivery(subtotalCents: number): number {
+  return Math.max(0, FREE_DELIVERY_MINIMUM_CENTS - subtotalCents);
+}
 
 export function haversineKm(
   aLat: number,

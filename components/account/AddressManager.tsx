@@ -62,6 +62,11 @@ export function AddressManager({
                   {address.barangay ? `, ${address.barangay}` : ""},{" "}
                   {address.city}
                 </p>
+                {address.landmark && (
+                  <p className="mt-0.5 truncate text-xs text-zb-cream/45">
+                    Landmark: {address.landmark}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 {!address.is_default && (
@@ -92,81 +97,103 @@ export function AddressManager({
         </ul>
       )}
 
-      {mapsEnabled && mapsApiKey ? (
-        <form action={action} className="grid gap-3">
-          <label className="text-sm font-medium text-zb-cream">
-            Label <span className="font-normal text-zb-cream/45">(optional)</span>
-            <input name="label" className={inputClass} placeholder="Home" />
-          </label>
-
-          <DeliveryMapPicker
-            apiKey={mapsApiKey}
-            storeLat={storeLat}
-            storeLng={storeLng}
-            tiers={deliveryTiers}
-            maxKm={deliveryMaxKm}
-            onChange={setDetails}
-          />
-
-          {details && (
-            <p className="text-sm text-zb-cream/70">
-              {details.street}
-              {details.barangay ? `, ${details.barangay}` : ""}, {details.city}
-            </p>
-          )}
-
-          <label className="text-sm font-medium text-zb-cream">
-            Landmark
-            <input
-              name="landmark"
-              className={inputClass}
-              placeholder="Near the red gate"
-            />
-          </label>
-
-          {/* Server derives tier/zone from these coordinates. */}
-          <input type="hidden" name="street" value={details?.street ?? ""} readOnly />
-          <input
-            type="hidden"
-            name="barangay"
-            value={details?.barangay ?? ""}
-            readOnly
-          />
-          <input type="hidden" name="city" value={details?.city ?? ""} readOnly />
-          <input type="hidden" name="lat" value={details?.lat ?? ""} readOnly />
-          <input type="hidden" name="lng" value={details?.lng ?? ""} readOnly />
-          <input
-            type="hidden"
-            name="googlePlaceId"
-            value={details?.googlePlaceId ?? ""}
-            readOnly
-          />
-
-          <div className="flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={pending || details === null}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-55"
-            >
-              {pending ? "Saving..." : "Add address"}
-            </button>
-            {state.status === "added" && (
-              <span aria-live="polite" className="text-sm text-zb-bone">
-                Added.
-              </span>
-            )}
-            {state.status === "error" && (
-              <span role="alert" className="text-sm text-zb-danger">
-                {state.message}
-              </span>
-            )}
-          </div>
-        </form>
-      ) : (
-        <p className="rounded-xl border border-zb-sage/25 bg-zb-primary-dark/35 p-4 text-sm text-zb-cream/65">
-          Saving new delivery addresses is temporarily unavailable.
+      {addresses.length === 0 && (
+        <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 p-4 text-sm leading-6 text-zb-cream/80">
+          Add your first delivery address so checkout is faster next time. Type
+          it in below
+          {mapsEnabled && mapsApiKey
+            ? " — and we'll detect your location to confirm the delivery fee."
+            : "."}
         </p>
       )}
+
+      <form action={action} className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-medium text-zb-cream">
+          Label <span className="font-normal text-zb-cream/45">(optional)</span>
+          <input name="label" className={inputClass} placeholder="Home" />
+        </label>
+
+        <label className="text-sm font-medium text-zb-cream sm:col-span-2">
+          Street
+          <input
+            name="street"
+            required
+            autoComplete="street-address"
+            className={inputClass}
+            placeholder="House number, street, subdivision"
+          />
+        </label>
+        <label className="text-sm font-medium text-zb-cream">
+          Barangay
+          <input name="barangay" className={inputClass} placeholder="Barangay" />
+        </label>
+        <label className="text-sm font-medium text-zb-cream">
+          Landmark
+          <input
+            name="landmark"
+            className={inputClass}
+            placeholder="Near the red gate"
+          />
+        </label>
+
+        {mapsEnabled && mapsApiKey && (
+          <div className="sm:col-span-2 space-y-2">
+            <p className="text-sm font-medium text-zb-cream">
+              Pin your location{" "}
+              <span className="font-normal text-zb-cream/45">
+                (optional, improves delivery accuracy)
+              </span>
+            </p>
+            <DeliveryMapPicker
+              apiKey={mapsApiKey}
+              storeLat={storeLat}
+              storeLng={storeLng}
+              tiers={deliveryTiers}
+              maxKm={deliveryMaxKm}
+              onChange={setDetails}
+            />
+            {details && (
+              <p className="text-sm text-zb-cream/70">
+                Detected: {details.street}
+                {details.barangay ? `, ${details.barangay}` : ""}, {details.city}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Coordinates (when a pin is dropped) ride along as hidden fields so the
+            server can derive an authoritative tier/zone. Left empty for a
+            manual-only save, which gets pinned later at checkout. */}
+        <input type="hidden" name="city" value={details?.city ?? ""} readOnly />
+        <input type="hidden" name="lat" value={details?.lat ?? ""} readOnly />
+        <input type="hidden" name="lng" value={details?.lng ?? ""} readOnly />
+        <input
+          type="hidden"
+          name="googlePlaceId"
+          value={details?.googlePlaceId ?? ""}
+          readOnly
+        />
+
+        <div className="sm:col-span-2 flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-55"
+          >
+            {pending ? "Saving..." : "Add address"}
+          </button>
+          {state.status === "added" && (
+            <span aria-live="polite" className="text-sm text-zb-bone">
+              Added.
+            </span>
+          )}
+          {state.status === "error" && (
+            <span role="alert" className="text-sm text-zb-danger">
+              {state.message}
+            </span>
+          )}
+        </div>
+      </form>
     </div>
   );
 }

@@ -185,6 +185,45 @@
   background: rgba(229, 192, 123, 0.75);
 }
 
+.checkout-order-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(229, 192, 123, 0.58) rgba(28, 45, 29, 0.72);
+}
+
+.checkout-order-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.checkout-order-scroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 3px,
+      rgba(101, 132, 91, 0.22) 3px 7px,
+      transparent 7px 10px
+    );
+}
+
+.checkout-order-scroll::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(rgba(229, 192, 123, 0.72), rgba(184, 151, 91, 0.78))
+    padding-box;
+}
+
+.checkout-order-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(rgba(244, 213, 151, 0.92), rgba(229, 192, 123, 0.9))
+    padding-box;
+}
+
+.checkout-order-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .recommendation-rail {
   scrollbar-width: none;
 }

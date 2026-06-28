@@ -13,7 +13,15 @@ import {
 import { formatPeso } from "@/lib/peso";
 
 // Routes that already surface the cart prominently — no bar needed.
-const HIDDEN_PREFIXES = ["/cart", "/checkout", "/order"];
+const HIDDEN_PREFIXES = [
+  "/cart",
+  "/checkout",
+  "/order",
+  "/workspace",
+  "/rider",
+  "/login",
+  "/account",
+];
 
 export function MobileCartBar() {
   const pathname = usePathname();

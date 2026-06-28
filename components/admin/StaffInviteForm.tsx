@@ -22,8 +22,8 @@ export function StaffInviteForm() {
         <div>
           <h2 className="font-display text-xl text-zb-cream">INVITE STAFF</h2>
           <p className="text-xs text-zb-cream/50">
-            Staff-only access. The invite is valid for 48 hours; the code is
-            sent after they open the invite link.
+            Team access for cashiers and riders. The invite is valid for 48
+            hours; the code is sent after they open the invite link.
           </p>
         </div>
       </div>
@@ -98,7 +98,7 @@ export function StaffInviteForm() {
         disabled={pending}
         className="mt-5 h-11 rounded-xl bg-zb-bone px-5 text-sm font-semibold text-zb-primary-dark disabled:opacity-55"
       >
-        {pending ? "Sending…" : "Send staff invitation"}
+        {pending ? "Sending..." : "Send team invitation"}
       </button>
     </form>
   );

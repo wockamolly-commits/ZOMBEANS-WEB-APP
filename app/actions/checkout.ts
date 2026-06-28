@@ -23,6 +23,10 @@ export type PlaceOrderInput = {
     lat: number;
     lng: number;
     googlePlaceId?: string;
+    // Device GPS reading captured at checkout, independent of the address above.
+    detectedLat?: number;
+    detectedLng?: number;
+    detectedAddress?: string;
   };
   paymentMethod: "cash" | "gcash" | "maya" | "card";
   isTestOrder?: boolean;
@@ -105,6 +109,9 @@ export async function placeOrder(
             lat: input.delivery.lat,
             lng: input.delivery.lng,
             google_place_id: input.delivery.googlePlaceId,
+            detected_lat: input.delivery.detectedLat,
+            detected_lng: input.delivery.detectedLng,
+            detected_address: input.delivery.detectedAddress,
           }
         : null,
     payment_method: input.paymentMethod,
