@@ -54,8 +54,11 @@ const addressSchema = z.object({
   label: z.string().trim().max(40).optional(),
   street: z.string().trim().min(1, { error: "Street is required." }),
   barangay: z.string().trim().optional(),
+  city: z.string().trim().optional(),
   landmark: z.string().trim().optional(),
-  tier: z.enum(["tier-2", "tier-4", "tier-6"]),
+  lat: z.coerce.number(),
+  lng: z.coerce.number(),
+  googlePlaceId: z.string().trim().optional(),
 });
 
 export async function addAddress(
@@ -69,21 +72,48 @@ export async function addAddress(
     label: formData.get("label") ?? "",
     street: formData.get("street") ?? "",
     barangay: formData.get("barangay") ?? "",
+    city: formData.get("city") ?? "",
     landmark: formData.get("landmark") ?? "",
-    tier: formData.get("tier") ?? "",
+    lat: formData.get("lat") ?? "",
+    lng: formData.get("lng") ?? "",
+    googlePlaceId: formData.get("googlePlaceId") ?? "",
   });
   if (!parsed.success) {
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
   const supabase = await createClient();
+
+  // Derive tier + zone server-side from the coordinates (never trust a client
+  // tier). Reject out-of-zone saves.
+  const { data: quote, error: quoteError } = await supabase.rpc("delivery_quote", {
+    p_lat: parsed.data.lat,
+    p_lng: parsed.data.lng,
+  });
+  const q = quote?.[0] as
+    | { in_zone: boolean; tier: string | null }
+    | undefined;
+  if (quoteError || !q) {
+    return { status: "error", message: "Could not check that location." };
+  }
+  if (!q.in_zone) {
+    return {
+      status: "error",
+      message: "That address is outside our 6 km delivery zone.",
+    };
+  }
+
   const { error } = await supabase.from("customer_addresses").insert({
     user_id: user.id,
     label: parsed.data.label || null,
     street: parsed.data.street,
     barangay: parsed.data.barangay || null,
+    city: parsed.data.city || "San Carlos City",
     landmark: parsed.data.landmark || null,
-    tier: parsed.data.tier,
+    tier: q.tier,
+    lat: parsed.data.lat,
+    lng: parsed.data.lng,
+    google_place_id: parsed.data.googlePlaceId || null,
   });
   if (error) {
     console.error("[account] address insert failed:", error);

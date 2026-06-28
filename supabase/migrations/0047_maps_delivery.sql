@@ -395,3 +395,13 @@ end;
 $$;
 
 grant execute on function place_order(jsonb) to anon, authenticated;
+
+-- Saved addresses carry coordinates so deliveries re-quote exactly. tier is now
+-- server-derived from coordinates at save time and becomes nullable (legacy
+-- rows keep their tier and have no coordinates until re-pinned).
+alter table customer_addresses
+  add column if not exists lat numeric(10,7),
+  add column if not exists lng numeric(10,7),
+  add column if not exists google_place_id text;
+
+alter table customer_addresses alter column tier drop not null;
