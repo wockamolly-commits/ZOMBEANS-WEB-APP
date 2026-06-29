@@ -352,8 +352,8 @@ export function RiderNotificationBell(props: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-zb-sage/25 bg-zb-primary-strong shadow-2xl shadow-black/35">
-          <div className="flex items-center justify-between gap-2 border-b border-zb-sage/15 px-3 py-2">
+        <div className="fixed inset-x-3 top-[4.75rem] z-50 flex max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-zb-sage/25 bg-zb-primary-strong shadow-2xl shadow-black/35 sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-[min(22rem,calc(100vw-2rem))] sm:max-h-[min(32rem,calc(100dvh-6rem))]">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-zb-sage/15 px-3 py-2">
             <div>
               <p className="text-sm font-semibold text-zb-cream">
                 Notifications
@@ -405,14 +405,14 @@ export function RiderNotificationBell(props: Props) {
           />
 
           {error && (
-            <p className="border-t border-zb-sage/15 px-3 py-2 text-xs text-zb-bone">
+            <p className="shrink-0 border-t border-zb-sage/15 px-3 py-2 text-xs text-zb-bone">
               {error}
             </p>
           )}
           <Link
             href="/rider/notifications"
             onClick={() => setOpen(false)}
-            className="flex h-10 items-center justify-center border-t border-zb-sage/15 text-sm font-semibold text-zb-bone transition hover:bg-zb-primary"
+            className="flex h-11 shrink-0 items-center justify-center border-t border-zb-sage/15 text-sm font-semibold text-zb-bone transition hover:bg-zb-primary sm:h-10"
           >
             View all notifications
           </Link>
@@ -492,7 +492,11 @@ function NotificationList({
   }
 
   return (
-    <div className={compact ? "max-h-[28rem] overflow-y-auto" : ""}>
+    <div
+      className={
+        compact ? "min-h-0 flex-1 overflow-y-auto overscroll-contain" : ""
+      }
+    >
       {notifications.map((notification) => (
         <NotificationItem
           key={notification.id}
@@ -530,7 +534,7 @@ function NotificationItem({
         unread ? "bg-zb-bone/10" : ""
       }`}
     >
-      <div className={`flex gap-3 ${compact ? "p-3" : "p-4"}`}>
+      <div className={`flex gap-3 ${compact ? "p-2.5 sm:p-3" : "p-4"}`}>
         <span
           className={`mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg border ${
             unread
