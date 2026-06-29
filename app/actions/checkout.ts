@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import {
   createClient as createSupabaseClient,
   type SupabaseClient,
-  type User,
 } from "@supabase/supabase-js";
 import { getTeamProfileForUser } from "@/lib/admin";
 import { isStoreOpen } from "@/lib/checkout";
@@ -60,54 +59,40 @@ export async function placeOrder(
   // mid-checkout (signing pickup users out, and breaking delivery with "could
   // not verify your sign-in session"). See createReadOnlyClient for detail.
   let customerSupabase: SupabaseClient | null = null;
-  let customerUser: User | null = null;
+  let hasCustomerCredentials = false;
 
   // Primary path: the short-lived access token the browser forwards. Verified
-  // with a stateless client, then used (via the accessToken option) so the RPC
-  // runs as the authenticated customer. Touches no cookies.
+  // by Postgres/RLS via the RPC itself. Do not block delivery on a separate
+  // auth.getUser() preflight here; production has shown that preflight can fail
+  // while the browser still has a usable token.
   if (input.customerAccessToken) {
-    const verifierSupabase = createSupabaseClient(
+    customerSupabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+        accessToken: async () => input.customerAccessToken ?? null,
       }
     );
-    const {
-      data: { user: tokenUser },
-    } = await verifierSupabase.auth.getUser(input.customerAccessToken);
-    if (tokenUser) {
-      customerSupabase = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          accessToken: async () => input.customerAccessToken ?? null,
-        }
-      );
-      customerUser = tokenUser;
-    }
+    hasCustomerCredentials = true;
   }
 
   // Fallback: read the cookie session for clients that didn't forward a token.
   // The read-only client can never clear those cookies, so this can't sign the
   // user out.
-  if (!customerUser) {
+  if (!hasCustomerCredentials) {
     const cookieSupabase = await createReadOnlyClient();
     const {
       data: { user: cookieUser },
     } = await cookieSupabase.auth.getUser();
     if (cookieUser) {
       customerSupabase = cookieSupabase;
-      customerUser = cookieUser;
+      hasCustomerCredentials = true;
     }
   }
 
   const isSuperAdmin = operationsProfile?.role === "admin";
-  const useSuperAdminCheckout = !customerUser && isSuperAdmin;
-  if (!customerUser && operationsProfile?.role === "staff") {
+  const useSuperAdminCheckout = !hasCustomerCredentials && isSuperAdmin;
+  if (!hasCustomerCredentials && operationsProfile?.role === "staff") {
     return {
       ok: false,
       error:
@@ -117,9 +102,14 @@ export async function placeOrder(
 
   if (
     input.serviceMode === "delivery" &&
-    !customerUser &&
+    !hasCustomerCredentials &&
     !useSuperAdminCheckout
   ) {
+    console.warn("[checkout] delivery auth missing", {
+      hasCustomerAccessToken: Boolean(input.customerAccessToken),
+      hasAdminUser: Boolean(adminUser),
+      operationsRole: operationsProfile?.role ?? null,
+    });
     return {
       ok: false,
       error:
