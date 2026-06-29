@@ -4,7 +4,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   ADMIN_AUTH_COOKIE,
   SUPABASE_COOKIE_ENCODING,
-  getCustomerAuthCookieName,
 } from "@/lib/supabase/constants";
 
 export async function updateSession(request: NextRequest) {
@@ -41,9 +40,9 @@ export async function updateSession(request: NextRequest) {
   }
 
   const refreshes: Array<Promise<unknown>> = [];
-  if (hasCookieFamily(requestCookies, getCustomerAuthCookieName())) {
-    refreshes.push(sessionClient().auth.getUser());
-  }
+  // Customer auth cookies are browser-owned. Refreshing them here can race with
+  // the browser client during checkout and overwrite a valid session with a
+  // cleared one. Keep proxy refresh scoped to the separate admin cookie.
   if (hasCookieFamily(requestCookies, ADMIN_AUTH_COOKIE)) {
     refreshes.push(sessionClient(ADMIN_AUTH_COOKIE).auth.getUser());
   }

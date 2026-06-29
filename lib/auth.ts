@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { createReadOnlyClient } from "@/lib/supabase/server";
 
 export type SavedAddress = {
   id: string;
@@ -18,7 +18,7 @@ export type SavedAddress = {
 };
 
 export const getCurrentUser = cache(async (): Promise<User | null> => {
-  const supabase = await createClient();
+  const supabase = await createReadOnlyClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -28,7 +28,7 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 export async function getCustomerProfile() {
   const user = await getCurrentUser();
   if (!user) return null;
-  const supabase = await createClient();
+  const supabase = await createReadOnlyClient();
   const { data } = await supabase
     .from("customer_profiles")
     .select("display_name, phone")
@@ -40,7 +40,7 @@ export async function getCustomerProfile() {
 export async function getSavedAddresses(): Promise<SavedAddress[]> {
   const user = await getCurrentUser();
   if (!user) return [];
-  const supabase = await createClient();
+  const supabase = await createReadOnlyClient();
   const { data } = await supabase
     .from("customer_addresses")
     .select(

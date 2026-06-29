@@ -3,7 +3,7 @@ import { Check, MapPin, Phone, Receipt, Sparkles } from "lucide-react";
 import { Header } from "@/components/shared/Header";
 import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
-import { createClient } from "@/lib/supabase/server";
+import { createReadOnlyClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/peso";
 import { CartClearOnArrival } from "@/components/shop/CartClearOnArrival";
 import { OrderStatusPoller } from "@/components/shop/OrderStatusPoller";
@@ -132,7 +132,7 @@ export default async function OrderTrackingPage({
   const { code } = await params;
   const { fresh } = await searchParams;
 
-  const supabase = await createClient();
+  const supabase = await createReadOnlyClient();
   const { data, error } = await supabase.rpc("get_order_by_code", {
     p_code: code.toUpperCase(),
   });
