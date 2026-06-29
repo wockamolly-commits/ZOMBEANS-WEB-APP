@@ -29,6 +29,18 @@ export async function GET(request: NextRequest) {
     error: null,
   };
 
+  let session: {
+    hasSession: boolean;
+    expiresAt: number | null;
+    secondsUntilExpiry: number | null;
+    error: string | null;
+  } = {
+    hasSession: false,
+    expiresAt: null,
+    secondsUntilExpiry: null,
+    error: null,
+  };
+
   try {
     const supabase = await createReadOnlyClient();
     const { data, error } = await supabase.auth.getUser();
@@ -36,6 +48,18 @@ export async function GET(request: NextRequest) {
       ok: !error,
       hasUser: Boolean(data.user),
       error: error?.message ?? null,
+    };
+    // getSession just reads the stored token (no refresh) so we can see whether
+    // the cookie holds an expired access token / how stale it is.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const s = sessionData.session;
+    session = {
+      hasSession: Boolean(s),
+      expiresAt: s?.expires_at ?? null,
+      secondsUntilExpiry: s?.expires_at
+        ? s.expires_at - Math.floor(Date.now() / 1000)
+        : null,
+      error: null,
     };
   } catch (e) {
     customer.error = e instanceof Error ? e.message : "threw";
@@ -62,6 +86,7 @@ export async function GET(request: NextRequest) {
     allCookieCount: cookieNames.length,
     authCookieNames,
     customer,
+    session,
     admin,
     supabaseUrlHost: process.env.NEXT_PUBLIC_SUPABASE_URL
       ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
