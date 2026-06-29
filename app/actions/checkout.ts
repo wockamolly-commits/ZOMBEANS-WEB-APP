@@ -1,12 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+  type User,
+} from "@supabase/supabase-js";
 import { getTeamProfileForUser } from "@/lib/admin";
 import { isStoreOpen } from "@/lib/checkout";
 import { normalizeQuantity, type CartLine } from "@/lib/cart";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
-import { createClient } from "@/lib/supabase/server";
+import { createReadOnlyClient } from "@/lib/supabase/server";
 
 export type PlaceOrderInput = {
   serviceMode: "dine_in" | "take_out" | "pickup" | "delivery";
@@ -50,13 +54,19 @@ export async function placeOrder(
     ? await getTeamProfileForUser(adminSupabase, adminUser.id)
     : null;
 
-  let customerSupabase = await createClient();
-  let {
-    data: { user: customerUser },
-  } = await customerSupabase.auth.getUser();
+  // Customer auth is resolved statelessly: the browser owns the customer
+  // session and we must never read it through a cookie-*writing* client here.
+  // Doing so let a failed internal token refresh delete the customer's cookies
+  // mid-checkout (signing pickup users out, and breaking delivery with "could
+  // not verify your sign-in session"). See createReadOnlyClient for detail.
+  let customerSupabase: SupabaseClient | null = null;
+  let customerUser: User | null = null;
 
-  if (!customerUser && input.customerAccessToken) {
-    const tokenSupabase = createSupabaseClient(
+  // Primary path: the short-lived access token the browser forwards. Verified
+  // with a stateless client, then used (via the accessToken option) so the RPC
+  // runs as the authenticated customer. Touches no cookies.
+  if (input.customerAccessToken) {
+    const verifierSupabase = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -64,19 +74,34 @@ export async function placeOrder(
           autoRefreshToken: false,
           persistSession: false,
         },
-        global: {
-          headers: {
-            Authorization: `Bearer ${input.customerAccessToken}`,
-          },
-        },
       }
     );
     const {
       data: { user: tokenUser },
-    } = await tokenSupabase.auth.getUser(input.customerAccessToken);
+    } = await verifierSupabase.auth.getUser(input.customerAccessToken);
     if (tokenUser) {
-      customerSupabase = tokenSupabase;
+      customerSupabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          accessToken: async () => input.customerAccessToken ?? null,
+        }
+      );
       customerUser = tokenUser;
+    }
+  }
+
+  // Fallback: read the cookie session for clients that didn't forward a token.
+  // The read-only client can never clear those cookies, so this can't sign the
+  // user out.
+  if (!customerUser) {
+    const cookieSupabase = await createReadOnlyClient();
+    const {
+      data: { user: cookieUser },
+    } = await cookieSupabase.auth.getUser();
+    if (cookieUser) {
+      customerSupabase = cookieSupabase;
+      customerUser = cookieUser;
     }
   }
 
@@ -90,8 +115,30 @@ export async function placeOrder(
     };
   }
 
+  if (
+    input.serviceMode === "delivery" &&
+    !customerUser &&
+    !useSuperAdminCheckout
+  ) {
+    return {
+      ok: false,
+      error:
+        "We could not verify your sign-in session. Please refresh checkout and try again.",
+    };
+  }
+
   const isTestOrder = useSuperAdminCheckout && input.isTestOrder === true;
-  const supabase = useSuperAdminCheckout ? adminSupabase : customerSupabase;
+  // Guest checkout (allowed for cash pickup/dine-in) has no customer client;
+  // run the RPC through a stateless anon client so place_order applies its own
+  // guest handling without ever touching a session cookie.
+  const guestSupabase =
+    customerSupabase ??
+    createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+  const supabase = useSuperAdminCheckout ? adminSupabase : guestSupabase;
 
   if (!isStoreOpen() && !isTestOrder) {
     return {
@@ -208,7 +255,7 @@ export async function quoteDelivery(input: {
     return { ok: false, error: "Invalid location." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createReadOnlyClient();
   const { data, error } = await supabase.rpc("delivery_quote", {
     p_lat: input.lat,
     p_lng: input.lng,

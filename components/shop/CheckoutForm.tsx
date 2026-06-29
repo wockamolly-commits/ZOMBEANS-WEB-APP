@@ -432,6 +432,18 @@ export function CheckoutForm({
         }
       }
 
+      if (
+        mode === "delivery" &&
+        !operationsRole &&
+        !submissionInput.customerAccessToken
+      ) {
+        setSubmitError(
+          "We could not verify your sign-in session. Please refresh checkout and try again."
+        );
+        setSubmitting(false);
+        return;
+      }
+
       const result = await placeOrder(submissionInput);
       if (result && !result.ok) {
         setSubmitError(result.error);
