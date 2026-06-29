@@ -51,6 +51,7 @@ export async function placeOrder(
   const customerSupabase = await createClient();
   const {
     data: { user: customerUser },
+    error: customerUserError,
   } = await customerSupabase.auth.getUser();
 
   const isSuperAdmin = operationsProfile?.role === "admin";
@@ -77,7 +78,9 @@ export async function placeOrder(
   if (input.paymentMethod === "cash" && !customerUser && !useSuperAdminCheckout) {
     return {
       ok: false,
-      error: "Please sign in or create an account to pay with cash.",
+      error: customerUserError
+        ? "We could not verify your sign-in session. Please refresh checkout and try again."
+        : "Please sign in or create an account to pay with cash.",
     };
   }
 

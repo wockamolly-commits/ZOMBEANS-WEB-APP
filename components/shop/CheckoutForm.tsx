@@ -407,6 +407,21 @@ export function CheckoutForm({
     setSubmitting(true);
     setSubmitError(null);
     try {
+      if (effectiveIsLoggedIn && !operationsRole) {
+        const supabase = createBrowserClient();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          const expiresAtMs = session.expires_at
+            ? session.expires_at * 1000
+            : 0;
+          if (!expiresAtMs || expiresAtMs - Date.now() < 60_000) {
+            await supabase.auth.refreshSession();
+          }
+        }
+      }
+
       const result = await placeOrder(input);
       if (result && !result.ok) {
         setSubmitError(result.error);
