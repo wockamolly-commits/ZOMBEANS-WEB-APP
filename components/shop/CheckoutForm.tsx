@@ -408,16 +408,12 @@ export function CheckoutForm({
     setSubmitError(null);
     try {
       const submissionInput = { ...input };
-      if (effectiveIsLoggedIn && !operationsRole && initialCustomerAccessToken) {
-        submissionInput.customerAccessToken = initialCustomerAccessToken;
-      }
       if (effectiveIsLoggedIn && !operationsRole) {
         const supabase = createBrowserClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const accessToken =
-          session?.access_token ?? readSupabaseAccessTokenFromCookie();
+        const accessToken = await getFreshCustomerAccessToken(
+          supabase,
+          initialCustomerAccessToken
+        );
         if (accessToken) {
           submissionInput.customerAccessToken = accessToken;
         }
@@ -1011,10 +1007,71 @@ function readSupabaseAccessTokenFromCookie() {
   }
 
   try {
-    const session = JSON.parse(decodedValue) as { access_token?: unknown };
-    return typeof session.access_token === "string"
-      ? session.access_token
-      : null;
+    const session = JSON.parse(decodedValue) as
+      | { access_token?: unknown }
+      | [unknown, ...unknown[]];
+    if (Array.isArray(session)) {
+      return typeof session[0] === "string" ? session[0] : null;
+    }
+    return typeof session.access_token === "string" ? session.access_token : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getFreshCustomerAccessToken(
+  supabase: ReturnType<typeof createBrowserClient>,
+  initialAccessToken?: string | null
+) {
+  const fallbackToken = readSupabaseAccessTokenFromCookie() ?? initialAccessToken ?? null;
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const currentToken = session?.access_token ?? fallbackToken;
+    const expiresAtMs =
+      session?.expires_at != null
+        ? session.expires_at * 1000
+        : getJwtExpiryMs(currentToken);
+
+    if (!currentToken || !expiresAtMs || expiresAtMs - Date.now() < 120_000) {
+      const {
+        data: { session: refreshedSession },
+      } = await supabase.auth.refreshSession();
+
+      if (refreshedSession?.access_token) {
+        return refreshedSession.access_token;
+      }
+    }
+
+    if (currentToken && (!expiresAtMs || expiresAtMs > Date.now())) {
+      return currentToken;
+    }
+  } catch {
+    const fallbackExpiryMs = getJwtExpiryMs(fallbackToken);
+    if (fallbackToken && (!fallbackExpiryMs || fallbackExpiryMs > Date.now())) {
+      return fallbackToken;
+    }
+  }
+
+  return null;
+}
+
+function getJwtExpiryMs(accessToken: string | null) {
+  if (!accessToken) return null;
+
+  const [, payload] = accessToken.split(".");
+  if (!payload) return null;
+
+  try {
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      "="
+    );
+    const claims = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof claims.exp === "number" ? claims.exp * 1000 : null;
   } catch {
     return null;
   }
