@@ -1,7 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { ADMIN_AUTH_COOKIE } from "@/lib/supabase/constants";
+import {
+  ADMIN_AUTH_COOKIE,
+  SUPABASE_COOKIE_ENCODING,
+  getCustomerAuthCookieName,
+} from "@/lib/supabase/constants";
 
 export async function updateSession(request: NextRequest) {
   const pendingCookies = new Map<
@@ -9,6 +13,7 @@ export async function updateSession(request: NextRequest) {
     { name: string; value: string; options: CookieOptions }
   >();
   const pendingHeaders = new Map<string, string>();
+  const requestCookies = request.cookies.getAll();
 
   function sessionClient(cookieName?: string) {
     return createServerClient(
@@ -17,8 +22,9 @@ export async function updateSession(request: NextRequest) {
       {
         ...(cookieName ? { cookieOptions: { name: cookieName } } : {}),
         cookies: {
+          encode: SUPABASE_COOKIE_ENCODING,
           getAll() {
-            return request.cookies.getAll();
+            return requestCookies;
           },
           setAll(cookiesToSet, headers) {
             cookiesToSet.forEach(({ name, value, options }) => {
@@ -34,34 +40,28 @@ export async function updateSession(request: NextRequest) {
     );
   }
 
-  const customer = sessionClient();
-  const admin = sessionClient(ADMIN_AUTH_COOKIE);
-  await Promise.all([customer.auth.getUser(), admin.auth.getUser()]);
+  const refreshes: Array<Promise<unknown>> = [];
+  if (hasCookieFamily(requestCookies, getCustomerAuthCookieName())) {
+    refreshes.push(sessionClient().auth.getUser());
+  }
+  if (hasCookieFamily(requestCookies, ADMIN_AUTH_COOKIE)) {
+    refreshes.push(sessionClient(ADMIN_AUTH_COOKIE).auth.getUser());
+  }
+  await Promise.all(refreshes);
 
-  // TEMP diagnostic: forward a marker on the request so downstream handlers
-  // (e.g. /api/auth-debug) can confirm the proxy ran. Built after the refresh
-  // so it also carries the updated cookie header. Remove with the diagnostic.
-  const forwardedHeaders = new Headers(request.headers);
-  forwardedHeaders.set("x-zb-proxy-ran", "1");
-  forwardedHeaders.set(
-    "x-zb-proxy-refreshed",
-    pendingCookies.size > 0 ? "1" : "0"
-  );
-
-  const response = NextResponse.next({
-    request: { headers: forwardedHeaders },
-  });
+  const response = NextResponse.next();
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
   });
   pendingHeaders.forEach((value, name) => response.headers.set(name, value));
-  // TEMP diagnostic: lets us confirm from the browser Network tab whether the
-  // proxy actually executes on production, and whether it wrote refreshed
-  // cookies. Remove once the production session issue is resolved.
-  response.headers.set("x-zb-proxy-ran", "1");
-  response.headers.set(
-    "x-zb-proxy-refreshed",
-    pendingCookies.size > 0 ? "1" : "0"
-  );
   return response;
+}
+
+function hasCookieFamily(
+  cookies: Array<{ name: string; value: string }>,
+  storageKey: string
+) {
+  return cookies.some(
+    ({ name }) => name === storageKey || name.startsWith(`${storageKey}.`)
+  );
 }

@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { ADMIN_AUTH_COOKIE } from "@/lib/supabase/constants";
+import {
+  ADMIN_AUTH_COOKIE,
+  SUPABASE_COOKIE_ENCODING,
+} from "@/lib/supabase/constants";
 
 export async function createAdminSessionClient() {
   const cookieStore = await cookies();
@@ -11,6 +14,7 @@ export async function createAdminSessionClient() {
     {
       cookieOptions: { name: ADMIN_AUTH_COOKIE },
       cookies: {
+        encode: SUPABASE_COOKIE_ENCODING,
         getAll() {
           return cookieStore.getAll();
         },

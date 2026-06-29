@@ -6,6 +6,7 @@ import { getCurrentUser, getCustomerProfile, getSavedAddresses } from "@/lib/aut
 import { getStaffProfile } from "@/lib/admin";
 import { getStoreAvailability } from "@/lib/store-availability-data";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
+import { createReadOnlyClient } from "@/lib/supabase/server";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
 
 export const metadata = { title: "Checkout" };
@@ -44,6 +45,9 @@ export default async function CheckoutPage() {
         ? { display_name: operationsProfile.display_name, phone: null }
         : null;
   const savedAddresses = user ? await getSavedAddresses() : [];
+  const customerAccessToken = user
+    ? await readCustomerAccessToken()
+    : null;
   const isLoggedIn = Boolean(user || operationsProfile);
   const email = user?.email ?? (operationsProfile ? operationsUser?.email ?? null : null);
 
@@ -75,10 +79,19 @@ export default async function CheckoutPage() {
             storeLng={Number(settingsRow?.store_lng ?? 123.4111058)}
             deliveryTiers={deliveryTiers}
             deliveryMaxKm={Number(settingsRow?.delivery_max_km ?? 6)}
+            initialCustomerAccessToken={customerAccessToken}
           />
         </main>
       </DoodleBg>
       <Footer />
     </>
   );
+}
+
+async function readCustomerAccessToken() {
+  const supabase = await createReadOnlyClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
 }

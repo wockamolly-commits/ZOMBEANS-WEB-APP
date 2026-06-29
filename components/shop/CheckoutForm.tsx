@@ -84,6 +84,7 @@ export function CheckoutForm({
   storeLng,
   deliveryTiers,
   deliveryMaxKm,
+  initialCustomerAccessToken,
 }: {
   isLoggedIn: boolean;
   email: string | null;
@@ -102,6 +103,7 @@ export function CheckoutForm({
   storeLng: number;
   deliveryTiers: DeliveryTier[];
   deliveryMaxKm: number;
+  initialCustomerAccessToken?: string | null;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
@@ -131,6 +133,7 @@ export function CheckoutForm({
 
   useEffect(() => {
     if (operationsRole) return;
+    if (isLoggedIn) return;
 
     let active = true;
     const supabase = createBrowserClient();
@@ -148,17 +151,13 @@ export function CheckoutForm({
 
     void supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) return;
-      syncLoggedIn(Boolean(session?.user));
+      syncLoggedIn(Boolean(session?.user || readSupabaseAccessTokenFromCookie()));
     });
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         syncLoggedIn(Boolean(session?.user));
-        return;
-      }
-      if (event === "SIGNED_OUT") {
-        syncLoggedIn(false);
       }
     });
 
@@ -409,26 +408,18 @@ export function CheckoutForm({
     setSubmitError(null);
     try {
       const submissionInput = { ...input };
+      if (effectiveIsLoggedIn && !operationsRole && initialCustomerAccessToken) {
+        submissionInput.customerAccessToken = initialCustomerAccessToken;
+      }
       if (effectiveIsLoggedIn && !operationsRole) {
         const supabase = createBrowserClient();
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (session) {
-          const expiresAtMs = session.expires_at
-            ? session.expires_at * 1000
-            : 0;
-          if (!expiresAtMs || expiresAtMs - Date.now() < 60_000) {
-            const {
-              data: { session: refreshedSession },
-            } = await supabase.auth.refreshSession();
-            if (refreshedSession?.access_token) {
-              submissionInput.customerAccessToken =
-                refreshedSession.access_token;
-            }
-          } else if (session.access_token) {
-            submissionInput.customerAccessToken = session.access_token;
-          }
+        const accessToken =
+          session?.access_token ?? readSupabaseAccessTokenFromCookie();
+        if (accessToken) {
+          submissionInput.customerAccessToken = accessToken;
         }
       }
 
@@ -952,4 +943,79 @@ export function CheckoutForm({
       </aside>
     </form>
   );
+}
+
+function readSupabaseAccessTokenFromCookie() {
+  if (typeof document === "undefined") return null;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+
+  let storageKey: string;
+  try {
+    storageKey = `sb-${new URL(supabaseUrl).hostname.split(".")[0]}-auth-token`;
+  } catch {
+    return null;
+  }
+
+  const cookies = new Map(
+    document.cookie
+      .split(";")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const separator = entry.indexOf("=");
+        const name = separator >= 0 ? entry.slice(0, separator) : entry;
+        const value = separator >= 0 ? entry.slice(separator + 1) : "";
+        return [name, value] as const;
+      })
+  );
+
+  const rawValue =
+    cookies.get(storageKey) ??
+    Array.from(cookies.entries())
+      .filter(([name]) => name.startsWith(`${storageKey}.`))
+      .sort(([left], [right]) => {
+        const leftIndex = Number(left.slice(storageKey.length + 1));
+        const rightIndex = Number(right.slice(storageKey.length + 1));
+        return leftIndex - rightIndex;
+      })
+      .map(([, value]) => value)
+      .join("");
+  if (!rawValue) return null;
+
+  let decodedValue: string;
+  try {
+    decodedValue = decodeURIComponent(rawValue);
+  } catch {
+    decodedValue = rawValue;
+  }
+
+  if (decodedValue.startsWith("base64-")) {
+    try {
+      const base64 = decodedValue
+        .slice("base64-".length)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+      const padded = base64.padEnd(
+        base64.length + ((4 - (base64.length % 4)) % 4),
+        "="
+      );
+      const bytes = Uint8Array.from(atob(padded), (char) =>
+        char.charCodeAt(0)
+      );
+      decodedValue = new TextDecoder().decode(bytes);
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const session = JSON.parse(decodedValue) as { access_token?: unknown };
+    return typeof session.access_token === "string"
+      ? session.access_token
+      : null;
+  } catch {
+    return null;
+  }
 }

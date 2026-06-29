@@ -29,13 +29,17 @@ describe("supabase browser clients", () => {
       1,
       "https://example.supabase.co",
       "anon-key",
-      { cookieOptions: { name: "zb-admin-auth" }, isSingleton: false }
+      {
+        cookieOptions: { name: "zb-admin-auth" },
+        cookies: { encode: "tokens-only" },
+        isSingleton: false,
+      }
     );
     expect(createBrowserClient).toHaveBeenNthCalledWith(
       2,
       "https://example.supabase.co",
       "anon-key",
-      { isSingleton: false }
+      { cookies: { encode: "tokens-only" }, isSingleton: false }
     );
   });
 
