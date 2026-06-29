@@ -39,7 +39,7 @@ describe("supabase browser clients", () => {
       2,
       "https://example.supabase.co",
       "anon-key",
-      { cookies: { encode: "tokens-only" }, isSingleton: false }
+      { isSingleton: false }
     );
   });
 

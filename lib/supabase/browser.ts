@@ -12,10 +12,7 @@ export function createClient() {
   customerClient ??= createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: { encode: SUPABASE_COOKIE_ENCODING },
-      isSingleton: false,
-    }
+    { isSingleton: false }
   );
   return customerClient;
 }

@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { SUPABASE_COOKIE_ENCODING } from "@/lib/supabase/constants";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -10,7 +9,6 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        encode: SUPABASE_COOKIE_ENCODING,
         getAll() {
           return cookieStore.getAll();
         },
@@ -49,7 +47,6 @@ export async function createReadOnlyClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        encode: SUPABASE_COOKIE_ENCODING,
         getAll() {
           return cookieStore.getAll();
         },
