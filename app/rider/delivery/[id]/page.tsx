@@ -14,6 +14,7 @@ import { RiderNavigationMap } from "@/components/rider/RiderNavigationMap";
 import { requireRider } from "@/lib/rider";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
 
 export const dynamic = "force-dynamic";
 
@@ -151,7 +152,7 @@ export default async function RiderDeliveryPage({
   const { id } = await params;
   const { profile } = await requireRider(`/rider/delivery/${id}`);
   const supabase = await createAdminSessionClient();
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsApiKey = getGoogleMapsBrowserKey();
 
   const { data, error } = await supabase
     .from("orders")

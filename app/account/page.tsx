@@ -8,6 +8,7 @@ import { ProfileForm } from "@/components/account/ProfileForm";
 import { AddressManager } from "@/components/account/AddressManager";
 import { formatPeso } from "@/lib/peso";
 import { createClient } from "@/lib/supabase/server";
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
 
 export const metadata = { title: "Your account" };
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function AccountPage() {
     .select("maps_enabled, store_lat, store_lng, delivery_fee_tiers, delivery_max_km")
     .eq("id", 1)
     .single();
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsApiKey = getGoogleMapsBrowserKey();
   const mapsEnabled = Boolean(settingsRow?.maps_enabled) && Boolean(mapsApiKey);
   const deliveryTiers = ((settingsRow?.delivery_fee_tiers as
     | { max_km: number; fee_cents: number }[]

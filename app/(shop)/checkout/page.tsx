@@ -6,6 +6,7 @@ import { getCurrentUser, getCustomerProfile, getSavedAddresses } from "@/lib/aut
 import { getStaffProfile } from "@/lib/admin";
 import { getStoreAvailability } from "@/lib/store-availability-data";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
 
 export const metadata = { title: "Checkout" };
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function CheckoutPage() {
     maxKm: tier.max_km,
     feeCents: tier.fee_cents,
   }));
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsApiKey = getGoogleMapsBrowserKey();
   const mapsEnabled = Boolean(settingsRow?.maps_enabled) && Boolean(mapsApiKey);
   const user = await getCurrentUser();
   const adminSupabase = operationsProfile

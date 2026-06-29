@@ -14,6 +14,7 @@ import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
 import { RiderRefreshButton } from "@/components/rider/RiderRefreshButton";
 import { RiderNavigationMap } from "@/components/rider/RiderNavigationMap";
+import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +129,7 @@ function coordsFrom(
 export default async function RiderHome() {
   const { profile } = await requireRider("/rider");
   const supabase = await createAdminSessionClient();
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsApiKey = getGoogleMapsBrowserKey();
   const todayStart = manilaTodayStartISO();
   const recentSince = new Date(
     new Date(todayStart).getTime() - 7 * 24 * 60 * 60 * 1000

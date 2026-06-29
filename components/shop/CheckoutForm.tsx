@@ -136,23 +136,30 @@ export function CheckoutForm({
     const supabase = createBrowserClient();
     const syncLoggedIn = (loggedIn: boolean) => {
       if (!active) return;
-      setBrowserLoggedIn(loggedIn);
+      setBrowserLoggedIn(loggedIn ? true : isLoggedIn ? null : false);
       const refreshKey = "zb-checkout-auth-refresh";
       if (loggedIn === isLoggedIn) {
         window.sessionStorage.removeItem(refreshKey);
-      } else if (!window.sessionStorage.getItem(refreshKey)) {
+      } else if (loggedIn && !window.sessionStorage.getItem(refreshKey)) {
         window.sessionStorage.setItem(refreshKey, "1");
         router.refresh();
       }
     };
 
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      syncLoggedIn(Boolean(user));
+    void supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) return;
+      syncLoggedIn(Boolean(session?.user));
     });
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncLoggedIn(Boolean(session?.user));
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        syncLoggedIn(Boolean(session?.user));
+        return;
+      }
+      if (event === "SIGNED_OUT") {
+        syncLoggedIn(false);
+      }
     });
 
     return () => {
