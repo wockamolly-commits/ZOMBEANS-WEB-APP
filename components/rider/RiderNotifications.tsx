@@ -22,7 +22,7 @@ import {
   markAllRiderNotificationsRead,
   setRiderNotificationRead,
 } from "@/app/rider/actions";
-import { createAdminClient } from "@/lib/supabase/browser";
+import { createClient } from "@/lib/supabase/browser";
 import type {
   RiderNotification,
   RiderNotificationKind,
@@ -153,7 +153,7 @@ function useRiderNotifications({
 
   useEffect(() => {
     let interval: number | undefined;
-    const supabase = createAdminClient();
+    const supabase = createClient();
     const startFallback = () => {
       if (interval !== undefined) return;
       interval = window.setInterval(() => router.refresh(), 15_000);
