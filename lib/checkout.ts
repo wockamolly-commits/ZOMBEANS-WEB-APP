@@ -13,11 +13,8 @@ export const KITCHEN_CLOSING_SOON_MINUTES = 15;
 
 const MANILA_TZ = "Asia/Manila";
 
-function isDevelopmentStoreOverrideEnabled(): boolean {
-  return (
-    process.env.NODE_ENV !== "production" &&
-    process.env.NEXT_PUBLIC_FORCE_STORE_OPEN === "true"
-  );
+function isStoreOverrideEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_FORCE_STORE_OPEN === "true";
 }
 
 // A short, human-readable summary of the weekly schedule for display.
@@ -101,7 +98,7 @@ function manilaNow(date: Date): { day: number; hour: number; minute: number } {
 // True while the café is within today's operating window (open inclusive,
 // close exclusive — e.g. ordering stops the moment the clock hits closing).
 export function isStoreOpen(date = new Date()): boolean {
-  if (isDevelopmentStoreOverrideEnabled()) return true;
+  if (isStoreOverrideEnabled()) return true;
   const { day, hour } = manilaNow(date);
   return hour >= STORE_OPEN_HOUR && hour < getCloseHour(day);
 }
@@ -110,7 +107,7 @@ export function isStoreOpen(date = new Date()): boolean {
 // currently open (before opening, or already closed). Minute-accurate, so it
 // can drive a live countdown near closing.
 export function minutesUntilClose(date = new Date()): number | null {
-  if (isDevelopmentStoreOverrideEnabled()) return null;
+  if (isStoreOverrideEnabled()) return null;
   const { day, hour, minute } = manilaNow(date);
   if (hour < STORE_OPEN_HOUR) return null;
   const remaining = getCloseHour(day) * 60 - (hour * 60 + minute);
@@ -160,7 +157,7 @@ export function generatePickupSlots(
     Math.ceil(first.getMinutes() / PICKUP_SLOT_MINUTES) * PICKUP_SLOT_MINUTES
   );
 
-  const overrideOpen = isDevelopmentStoreOverrideEnabled();
+  const overrideOpen = isStoreOverrideEnabled();
   const close = overrideOpen
     ? new Date(now.getTime() + 4 * 60 * 60 * 1000)
     : new Date(now);
