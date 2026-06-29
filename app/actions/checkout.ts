@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getTeamProfileForUser } from "@/lib/admin";
 import { isStoreOpen } from "@/lib/checkout";
 import { normalizeQuantity, type CartLine } from "@/lib/cart";
@@ -30,6 +31,7 @@ export type PlaceOrderInput = {
   };
   paymentMethod: "cash" | "gcash" | "maya" | "card";
   isTestOrder?: boolean;
+  customerAccessToken?: string;
   lines: CartLine[];
 };
 
@@ -48,11 +50,40 @@ export async function placeOrder(
     ? await getTeamProfileForUser(adminSupabase, adminUser.id)
     : null;
 
-  const customerSupabase = await createClient();
-  const {
+  let customerSupabase = await createClient();
+  let {
     data: { user: customerUser },
     error: customerUserError,
   } = await customerSupabase.auth.getUser();
+
+  if (!customerUser && input.customerAccessToken) {
+    const tokenSupabase = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${input.customerAccessToken}`,
+          },
+        },
+      }
+    );
+    const {
+      data: { user: tokenUser },
+      error: tokenUserError,
+    } = await tokenSupabase.auth.getUser(input.customerAccessToken);
+    if (tokenUser) {
+      customerSupabase = tokenSupabase;
+      customerUser = tokenUser;
+      customerUserError = null;
+    } else if (!customerUserError) {
+      customerUserError = tokenUserError;
+    }
+  }
 
   const isSuperAdmin = operationsProfile?.role === "admin";
   const useSuperAdminCheckout = !customerUser && isSuperAdmin;

@@ -407,22 +407,37 @@ export function CheckoutForm({
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const submissionInput = { ...input };
       if (effectiveIsLoggedIn && !operationsRole) {
         const supabase = createBrowserClient();
         const {
           data: { session },
         } = await supabase.auth.getSession();
+        if (!session) {
+          setSubmitError("Please refresh checkout and sign in again.");
+          setSubmitting(false);
+          return;
+        }
+
         if (session) {
           const expiresAtMs = session.expires_at
             ? session.expires_at * 1000
             : 0;
           if (!expiresAtMs || expiresAtMs - Date.now() < 60_000) {
-            await supabase.auth.refreshSession();
+            const {
+              data: { session: refreshedSession },
+            } = await supabase.auth.refreshSession();
+            if (refreshedSession?.access_token) {
+              submissionInput.customerAccessToken =
+                refreshedSession.access_token;
+            }
+          } else if (session.access_token) {
+            submissionInput.customerAccessToken = session.access_token;
           }
         }
       }
 
-      const result = await placeOrder(input);
+      const result = await placeOrder(submissionInput);
       if (result && !result.ok) {
         setSubmitError(result.error);
         setSubmitting(false);
