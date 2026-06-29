@@ -206,6 +206,7 @@ export function CheckoutForm({
           </Link>
           <Link
             href="/auth/signout?scope=admin&next=/login?next=/checkout"
+            prefetch={false}
             className="inline-flex h-11 items-center rounded-xl border border-zb-bone/45 px-5 font-semibold text-zb-cream hover:bg-zb-bone/10"
           >
             Sign out and use customer account
@@ -494,6 +495,7 @@ export function CheckoutForm({
                   ? "/auth/signout?scope=admin&next=/checkout"
                   : "/auth/signout?next=/checkout"
               }
+              prefetch={false}
               className="font-semibold text-zb-bone hover:underline"
             >
               Not you?
