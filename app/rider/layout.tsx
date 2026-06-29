@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bike, ExternalLink, History, UserRound } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
+import { RiderLiveUpdater } from "@/components/rider/RiderLiveUpdater";
 import { RiderNotificationBell } from "@/components/rider/RiderNotifications";
 import { Logo } from "@/components/shared/Logo";
 import { requireRider } from "@/lib/rider";
@@ -79,6 +80,7 @@ export default async function RiderLayout({
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-5">{children}</main>
+      <RiderLiveUpdater riderProfileId={profile.id} />
       <div className="sr-only">Signed in as {profile.display_name}</div>
     </div>
   );
