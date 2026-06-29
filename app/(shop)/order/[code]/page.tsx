@@ -30,7 +30,21 @@ type OrderPayload = {
   accepted_at: string | null;
   ready_at: string | null;
   completed_at: string | null;
+  rejected_reason: string | null;
   pickup_time: string | null;
+  delivery_address: {
+    street: string;
+    barangay: string | null;
+    city: string;
+    landmark: string | null;
+    delivery_notes: string | null;
+    lat: number | string;
+    lng: number | string;
+    google_place_id: string | null;
+    detected_lat: number | string | null;
+    detected_lng: number | string | null;
+    detected_address: string | null;
+  } | null;
   items: Array<{
     name: string;
     variation: string;
@@ -41,6 +55,7 @@ type OrderPayload = {
       group: string;
       name: string;
       price_delta_cents: number;
+      quantity: number;
     }>;
   }>;
 };
@@ -73,6 +88,34 @@ function statusIndex(
     return timeline.findIndex((step) => step.key === "preparing");
   }
   return timeline.findIndex((step) => step.key === status);
+}
+
+function submittedAddress(
+  address: NonNullable<OrderPayload["delivery_address"]>
+) {
+  return [address.street, address.barangay, address.city]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function coordsLabel(lat: number | string, lng: number | string) {
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
+    return null;
+  }
+  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
+}
+
+function detectedLocation(
+  address: NonNullable<OrderPayload["delivery_address"]>
+) {
+  return (
+    address.detected_address ??
+    (address.detected_lat != null && address.detected_lng != null
+      ? coordsLabel(address.detected_lat, address.detected_lng)
+      : coordsLabel(address.lat, address.lng))
+  );
 }
 
 export async function generateMetadata({
@@ -148,8 +191,15 @@ export default async function OrderTrackingPage({
 
               {rejected ? (
                 <div className="mt-6 rounded-2xl border border-zb-danger/40 bg-zb-danger/10 p-4 text-sm text-zb-cream">
-                  This order was {order.status}. Reach out to the cafe if you
-                  need help.
+                  <p>This order was {order.status}.</p>
+                  {order.rejected_reason ? (
+                    <p className="mt-2 text-zb-cream/80">
+                      Reason: {order.rejected_reason}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-zb-cream/70">
+                    Reach out to the cafe if you need help.
+                  </p>
                 </div>
               ) : (
                 <ol className="mt-7 grid gap-3">
@@ -204,9 +254,11 @@ export default async function OrderTrackingPage({
                         <ul className="mt-1 space-y-0.5 text-xs text-zb-cream/45">
                           {line.options.map((option) => (
                             <li key={`${option.group}-${option.name}`}>
-                              {option.name}
+                              {option.quantity > 1
+                                ? `${option.name} x${option.quantity}`
+                                : option.name}
                               {option.price_delta_cents > 0
-                                ? ` (+${formatPeso(option.price_delta_cents)})`
+                                ? ` (+${formatPeso(option.price_delta_cents * option.quantity)})`
                                 : ""}
                             </li>
                           ))}
@@ -245,6 +297,49 @@ export default async function OrderTrackingPage({
                 <Receipt className="size-3.5 text-zb-bone" /> For {order.customer_name}
               </p>
             </div>
+
+            {order.service_mode === "delivery" && order.delivery_address && (
+              <div className="mt-6 rounded-3xl border border-zb-sage/25 bg-zb-primary-strong/65 p-6 sm:p-8">
+                <h2 className="font-display text-2xl text-zb-cream">
+                  DELIVERY DETAILS
+                </h2>
+                <div className="mt-4 grid gap-3 text-sm text-zb-cream/70">
+                  <div className="rounded-xl bg-zb-primary/35 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zb-cream/35">
+                      Submitted address
+                    </p>
+                    <p className="mt-1 flex items-start gap-2">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-zb-sage" />
+                      <span>
+                        {submittedAddress(order.delivery_address)}
+                        {order.delivery_address.landmark && (
+                          <span className="mt-1 block text-xs text-zb-cream/45">
+                            Landmark: {order.delivery_address.landmark}
+                          </span>
+                        )}
+                        {order.delivery_address.delivery_notes && (
+                          <span className="mt-1 block text-xs text-zb-cream/45">
+                            Notes: {order.delivery_address.delivery_notes}
+                          </span>
+                        )}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-zb-primary/25 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zb-cream/35">
+                      Auto-detected location
+                    </p>
+                    <p className="mt-1 flex items-start gap-2">
+                      <MapPin className="mt-0.5 size-4 shrink-0 text-zb-bone" />
+                      <span>
+                        {detectedLocation(order.delivery_address) ??
+                          "Not available"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <p className="mt-6 flex items-start gap-2 rounded-2xl border border-zb-sage/20 bg-zb-primary-dark/40 px-4 py-3 text-xs leading-5 text-zb-cream/65">
               <MapPin className="mt-0.5 size-4 shrink-0 text-zb-bone" />

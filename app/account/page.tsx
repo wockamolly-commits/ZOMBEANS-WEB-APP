@@ -19,6 +19,19 @@ export default async function AccountPage() {
   const addresses = await getSavedAddresses();
 
   const supabase = await createClient();
+  const { data: settingsRow } = await supabase
+    .from("app_settings")
+    .select("maps_enabled, store_lat, store_lng, delivery_fee_tiers, delivery_max_km")
+    .eq("id", 1)
+    .single();
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? null;
+  const mapsEnabled = Boolean(settingsRow?.maps_enabled) && Boolean(mapsApiKey);
+  const deliveryTiers = ((settingsRow?.delivery_fee_tiers as
+    | { max_km: number; fee_cents: number }[]
+    | null) ?? []).map((tier) => ({
+    maxKm: tier.max_km,
+    feeCents: tier.fee_cents,
+  }));
   // RLS already restricts to the current user; the explicit user_id filter is
   // defense-in-depth (orders.user_id is nullable for guests, and policies are
   // OR-combined, so a future broad SELECT policy can't leak others' orders here).
@@ -53,7 +66,15 @@ export default async function AccountPage() {
             <h2 className="font-display text-2xl text-zb-cream">DELIVERY ADDRESSES</h2>
             <p className="mt-1 text-sm text-zb-cream/60">Reused when you order delivery.</p>
             <div className="mt-5">
-              <AddressManager addresses={addresses} />
+              <AddressManager
+                addresses={addresses}
+                mapsEnabled={mapsEnabled}
+                mapsApiKey={mapsApiKey}
+                storeLat={Number(settingsRow?.store_lat ?? 10.4884825)}
+                storeLng={Number(settingsRow?.store_lng ?? 123.4111058)}
+                deliveryTiers={deliveryTiers}
+                deliveryMaxKm={Number(settingsRow?.delivery_max_km ?? 6)}
+              />
             </div>
           </section>
 

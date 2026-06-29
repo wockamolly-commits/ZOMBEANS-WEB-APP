@@ -7,13 +7,16 @@ import { Footer } from "@/components/shared/Footer";
 import { DoodleBg } from "@/components/shared/DoodleBg";
 import { PesoPrice } from "@/components/shared/PesoPrice";
 import {
-  findGroup,
-  getGroupCategories,
-  getGroupItems,
   getDefaultPriceCents,
   MENU_GROUPS,
   type StaticItem,
 } from "@/lib/menu-static";
+import {
+  findStorefrontGroup,
+  getStorefrontGroupCategories,
+  getStorefrontGroupItems,
+  getStorefrontMenuModel,
+} from "@/lib/storefront-menu";
 import {
   getStorefrontAvailability,
   type StorefrontAvailability,
@@ -31,7 +34,8 @@ export async function generateMetadata({
   params: Promise<{ group: string }>;
 }) {
   const { group: slug } = await params;
-  const group = findGroup(slug);
+  const menu = await getStorefrontMenuModel();
+  const group = findStorefrontGroup(menu.groups, slug);
   return { title: group?.name ?? "Menu" };
 }
 
@@ -121,11 +125,12 @@ export default async function MenuGroupPage({
   params: Promise<{ group: string }>;
 }) {
   const { group: slug } = await params;
-  const group = findGroup(slug);
+  const menu = await getStorefrontMenuModel();
+  const group = findStorefrontGroup(menu.groups, slug);
   if (!group) notFound();
 
-  const categories = getGroupCategories(group);
-  const flatItems = getGroupItems(group);
+  const categories = getStorefrontGroupCategories(group, menu.categories);
+  const flatItems = getStorefrontGroupItems(group, menu.categories);
   const availability = await getStorefrontAvailability(
     flatItems.map((item) => item.slug)
   );

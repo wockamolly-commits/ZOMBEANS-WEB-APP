@@ -102,6 +102,8 @@ async function audit(
 function refreshMenu() {
   revalidatePath("/workspace/menu");
   revalidatePath("/menu");
+  revalidatePath("/menu/[group]", "page");
+  revalidatePath("/menu/[group]/[item]", "page");
 }
 
 export async function saveCategory(

@@ -8,30 +8,26 @@ import { DoodleBg } from "@/components/shared/DoodleBg";
 import { Footer } from "@/components/shared/Footer";
 import { Header } from "@/components/shared/Header";
 import {
-  MENU_GROUPS,
-  findGroup,
-  getGroupItems,
-} from "@/lib/menu-static";
+  findStorefrontGroup,
+  getStorefrontGroupItems,
+  getStorefrontMenuModel,
+} from "@/lib/storefront-menu";
 import { getStorefrontAvailability } from "@/lib/storefront-availability";
 import { getStorefrontOptionGroups } from "@/lib/storefront-options";
 
 export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return MENU_GROUPS.flatMap((group) =>
-    getGroupItems(group).map((item) => ({
-      group: group.slug,
-      item: item.slug,
-    }))
-  );
-}
-
 export async function generateMetadata({
   params,
 }: PageProps<"/menu/[group]/[item]">) {
   const { group: groupSlug, item: itemSlug } = await params;
-  const group = findGroup(groupSlug);
-  const item = group && getGroupItems(group).find((entry) => entry.slug === itemSlug);
+  const menu = await getStorefrontMenuModel();
+  const group = findStorefrontGroup(menu.groups, groupSlug);
+  const item =
+    group &&
+    getStorefrontGroupItems(group, menu.categories).find(
+      (entry) => entry.slug === itemSlug
+    );
   return {
     title: item?.name ?? "Menu item",
     description: item?.description,
@@ -42,8 +38,13 @@ export default async function ProductPage({
   params,
 }: PageProps<"/menu/[group]/[item]">) {
   const { group: groupSlug, item: itemSlug } = await params;
-  const group = findGroup(groupSlug);
-  const item = group && getGroupItems(group).find((entry) => entry.slug === itemSlug);
+  const menu = await getStorefrontMenuModel();
+  const group = findStorefrontGroup(menu.groups, groupSlug);
+  const item =
+    group &&
+    getStorefrontGroupItems(group, menu.categories).find(
+      (entry) => entry.slug === itemSlug
+    );
   if (!group || !item) notFound();
   const [optionGroups, availabilityMap] = await Promise.all([
     getStorefrontOptionGroups(item.slug),

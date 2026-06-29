@@ -20,9 +20,13 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Select } from "@base-ui/react/select";
-import { getCartSubtotal, readCart, type CartLine } from "@/lib/cart";
 import {
-  DELIVERY_TIERS,
+  getCartSubtotal,
+  getModifierDisplayName,
+  readCart,
+  type CartLine,
+} from "@/lib/cart";
+import {
   generatePickupSlots,
   getDeliveryFeeCents,
   isStoreOpen,
@@ -32,7 +36,16 @@ import {
 } from "@/lib/checkout";
 import { formatPeso } from "@/lib/peso";
 import { placeOrder, type PlaceOrderInput } from "@/app/actions/checkout";
+import {
+  DeliveryMapPicker,
+  type DeliveryDetails,
+} from "@/components/shop/DeliveryMapPicker";
 import { KitchenClosingBanner } from "@/components/shop/KitchenClosingBanner";
+import {
+  amountUntilFreeDelivery,
+  qualifiesForFreeDelivery,
+  type DeliveryTier,
+} from "@/lib/delivery";
 import { createClient as createBrowserClient } from "@/lib/supabase/browser";
 import type { SavedAddress } from "@/lib/auth";
 
@@ -59,19 +72,48 @@ export function CheckoutForm({
   profile,
   savedAddresses,
   operationsRole,
+  webstoreOpen,
+  closureLabel,
+  closedUntil,
+  prepBufferMinutes,
+  physicalOpen,
+  physicalLabel,
+  mapsEnabled,
+  mapsApiKey,
+  storeLat,
+  storeLng,
+  deliveryTiers,
+  deliveryMaxKm,
 }: {
   isLoggedIn: boolean;
   email: string | null;
   profile: { display_name: string | null; phone: string | null };
   savedAddresses: SavedAddress[];
   operationsRole: "admin" | "staff" | null;
+  webstoreOpen: boolean;
+  closureLabel: string | null;
+  closedUntil: string | null;
+  prepBufferMinutes: number;
+  physicalOpen: boolean;
+  physicalLabel: string | null;
+  mapsEnabled: boolean;
+  mapsApiKey: string | null;
+  storeLat: number;
+  storeLng: number;
+  deliveryTiers: DeliveryTier[];
+  deliveryMaxKm: number;
 }) {
   const [lines, setLines] = useState<CartLine[] | null>(null);
   const [mode, setMode] = useState<ServiceMode>("pickup");
   const [pickupTime, setPickupTime] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] =
     useState<PlaceOrderInput["paymentMethod"]>("cash");
-  const [deliveryTier, setDeliveryTier] = useState("");
+  const [mapDetails, setMapDetails] = useState<DeliveryDetails | null>(null);
+  const [gps, setGps] = useState<{
+    lat: number;
+    lng: number;
+    address: string | null;
+  } | null>(null);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [reviewed, setReviewed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -81,7 +123,7 @@ export function CheckoutForm({
   const formRef = useRef<HTMLFormElement>(null);
   const router = useRouter();
   const [pickupSlots, setPickupSlots] = useState<PickupSlot[]>(() =>
-    generatePickupSlots()
+    generatePickupSlots(new Date(), prepBufferMinutes)
   );
   // Start optimistically open to avoid a closed flash during hydration; the
   // effect below corrects it on mount and keeps it current.
@@ -128,13 +170,13 @@ export function CheckoutForm({
   // open, so ordering re-enables on its own the moment the café opens.
   useEffect(() => {
     const refresh = () => {
-      setPickupSlots(generatePickupSlots());
+      setPickupSlots(generatePickupSlots(new Date(), prepBufferMinutes));
       setStoreOpen(isStoreOpen());
     };
     refresh();
     const id = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [prepBufferMinutes]);
 
   if (operationsRole === "staff") {
     return (
@@ -182,25 +224,53 @@ export function CheckoutForm({
     );
   }
 
-  // Ordering is only available during business hours. This screen re-enables
-  // itself automatically once the café opens (see the refresh interval above).
-  if (!storeOpen && !isTestOrder) {
+  // Ordering is only available during business hours, and also when the
+  // webstore is not manually closed. This screen re-enables itself
+  // automatically once the café opens (see the refresh interval above).
+  if ((!storeOpen || !webstoreOpen) && !isTestOrder) {
+    // Two distinct causes with different messaging: the café is outside its
+    // operating hours (storeOpen false → the café itself is closed), or staff
+    // manually paused online ordering while the café may still be open for
+    // walk-ins (webstoreOpen false). Outside-hours takes precedence since the
+    // café is genuinely closed then.
+    const onlineOnly = storeOpen && !webstoreOpen;
+    const reopen = closedUntil
+      ? new Intl.DateTimeFormat("en-PH", {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZone: "Asia/Manila",
+        }).format(new Date(closedUntil))
+      : null;
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <Clock3 className="mx-auto size-12 text-zb-bone" />
-        <h1 className="mt-5 font-display text-5xl">THE CAFÉ IS CLOSED</h1>
-        <p className="mt-3 text-zb-cream/70">
-          Ordering is paused outside our operating hours. Your cart is saved —
-          come back when we&apos;re open and check out then.
-        </p>
-        <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
-          {STORE_HOURS_SUMMARY.map((row) => (
-            <div key={row.days} className="flex items-center justify-between gap-4">
-              <dt className="font-semibold text-zb-cream">{row.days}</dt>
-              <dd className="font-mono-tabular text-zb-cream/70">{row.hours}</dd>
-            </div>
-          ))}
-        </dl>
+        <h1 className="mt-5 font-display text-5xl">
+          {onlineOnly ? "ONLINE ORDERING UNAVAILABLE" : "THE CAFÉ IS CLOSED"}
+        </h1>
+        {onlineOnly ? (
+          <p className="mt-3 text-zb-cream/70">
+            {closureLabel ? `${closureLabel}. ` : ""}Online ordering is paused
+            right now, but you&apos;re welcome to visit us in person. Your cart
+            is saved
+            {reopen ? ` — we expect to reopen online around ${reopen}` : ""}.
+          </p>
+        ) : (
+          <>
+            <p className="mt-3 text-zb-cream/70">
+              Ordering is paused outside our operating hours. Your cart is saved —
+              come back when we&apos;re open and check out then.
+            </p>
+            <dl className="mx-auto mt-7 max-w-xs space-y-2 rounded-2xl border border-zb-sage/30 bg-zb-primary-strong/75 p-5 text-sm">
+              {STORE_HOURS_SUMMARY.map((row) => (
+                <div key={row.days} className="flex items-center justify-between gap-4">
+                  <dt className="font-semibold text-zb-cream">{row.days}</dt>
+                  <dd className="font-mono-tabular text-zb-cream/70">{row.hours}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
         <Link href="/menu" className="mt-7 inline-flex h-11 items-center rounded-xl bg-zb-bone px-5 font-semibold text-zb-primary-dark hover:bg-zb-bone-soft">
           Browse the menu
         </Link>
@@ -222,10 +292,30 @@ export function CheckoutForm({
     ? isLoggedIn
     : browserLoggedIn ?? isLoggedIn;
   const isTakeOut = mode === "pickup" || mode === "delivery";
+  const dineInAvailable = physicalOpen;
   // Cash orders must be tied to an account for tracking and accountability.
   const requiresAccount = !effectiveIsLoggedIn && paymentMethod === "cash";
   const subtotal = getCartSubtotal(lines);
-  const deliveryFee = mode === "delivery" ? getDeliveryFeeCents(deliveryTier) : 0;
+  // Delivery is Maps-only. Fee preview comes from the server-confirmed map
+  // pick, or for a saved address that already has coordinates, its stored
+  // server-derived tier. place_order always re-derives the charge from coords.
+  const savedSelected = savedAddresses.find((a) => a.id === selectedAddressId);
+  const savedHasCoords =
+    savedSelected != null && savedSelected.lat != null && savedSelected.lng != null;
+  const quotedDeliveryFee =
+    mode === "delivery"
+      ? mapDetails?.feeCents ??
+        (savedHasCoords ? getDeliveryFeeCents(savedSelected.tier ?? "") : 0)
+      : 0;
+  const freeDeliveryEligible =
+    mode === "delivery" && qualifiesForFreeDelivery(subtotal);
+  const deliveryFee = freeDeliveryEligible ? 0 : quotedDeliveryFee;
+  const freeDeliveryRemaining =
+    mode === "delivery" ? amountUntilFreeDelivery(subtotal) : 0;
+  // Ready when a saved address already has coordinates, or the map pin produced
+  // an in-zone quote (mapDetails is set to null on out-of-zone by the picker).
+  const deliveryReady =
+    mode !== "delivery" || savedHasCoords || mapDetails !== null;
   const total = subtotal + deliveryFee;
   // Treat an expired selection as empty without synchronously mutating state
   // from an effect. The next explicit selection replaces the stale value.
@@ -267,20 +357,39 @@ export function CheckoutForm({
         mode === "delivery" && effectiveIsLoggedIn
           ? (() => {
               const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-              if (saved) {
+              // A re-pin (mapDetails) wins; otherwise use the saved address's
+              // stored coordinates.
+              if (
+                saved &&
+                saved.lat != null &&
+                saved.lng != null &&
+                mapDetails === null
+              ) {
                 return {
                   street: saved.street,
                   barangay: saved.barangay ?? undefined,
+                  city: saved.city,
                   landmark: saved.landmark ?? undefined,
-                  tier: saved.tier,
+                  lat: saved.lat,
+                  lng: saved.lng,
+                  googlePlaceId: saved.google_place_id ?? undefined,
+                  detectedLat: gps?.lat,
+                  detectedLng: gps?.lng,
+                  detectedAddress: gps?.address ?? undefined,
                 };
               }
-              if (deliveryTier && deliveryTier !== "out-of-zone") {
+              if (mapDetails) {
                 return {
-                  street: String(data.get("street") ?? ""),
-                  barangay: data.get("barangay") ? String(data.get("barangay")) : undefined,
+                  street: mapDetails.street,
+                  barangay: mapDetails.barangay ?? undefined,
+                  city: mapDetails.city,
                   landmark: data.get("landmark") ? String(data.get("landmark")) : undefined,
-                  tier: deliveryTier as "tier-2" | "tier-4" | "tier-6",
+                  lat: mapDetails.lat,
+                  lng: mapDetails.lng,
+                  googlePlaceId: mapDetails.googlePlaceId ?? undefined,
+                  detectedLat: gps?.lat,
+                  detectedLng: gps?.lng,
+                  detectedAddress: gps?.address ?? undefined,
                 };
               }
               return undefined;
@@ -397,29 +506,38 @@ export function CheckoutForm({
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {topModes.map((entry) => {
-              const Icon = entry.icon;
-              const selected =
-                entry.value === "take_out" ? isTakeOut : mode === entry.value;
-              return (
-                <button
-                  key={entry.value}
-                  type="button"
-                  onClick={() => {
-                    // "Take Out" defaults to pickup; the sub-options below
-                    // let the customer switch to delivery.
-                    setMode(entry.value === "take_out" ? "pickup" : "dine_in");
-                    setReviewed(false);
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
-                >
-                  <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
-                  <span className="mt-3 block font-semibold">{entry.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
-                </button>
-              );
-            })}
+            {topModes
+              .filter((entry) => dineInAvailable || entry.value !== "dine_in")
+              .map((entry) => {
+                const Icon = entry.icon;
+                const selected =
+                  entry.value === "take_out" ? isTakeOut : mode === entry.value;
+                return (
+                  <button
+                    key={entry.value}
+                    type="button"
+                    onClick={() => {
+                      // "Take Out" defaults to pickup; the sub-options below
+                      // let the customer switch to delivery.
+                      setMode(entry.value === "take_out" ? "pickup" : "dine_in");
+                      setReviewed(false);
+                    }}
+                    className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
+                  >
+                    <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
+                    <span className="mt-3 block font-semibold">{entry.label}</span>
+                    <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
+                  </button>
+                );
+              })}
           </div>
+
+          {!dineInAvailable && (
+            <p className="mt-3 rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+              {physicalLabel ? `${physicalLabel}. ` : ""}Dine-in is unavailable
+              while our cafe is closed. Pickup and delivery are still open.
+            </p>
+          )}
 
           {isTakeOut && (
             <div className="mt-3 rounded-2xl border border-zb-sage/20 bg-zb-primary-dark/25 p-3 sm:p-4">
@@ -427,26 +545,33 @@ export function CheckoutForm({
                 How should we get it to you?
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {takeOutModes.map((entry) => {
-                  const Icon = entry.icon;
-                  const selected = mode === entry.value;
-                  return (
-                    <button
-                      key={entry.value}
-                      type="button"
-                      onClick={() => {
-                        setMode(entry.value);
-                        setReviewed(false);
-                      }}
-                      className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
-                    >
-                      <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
-                      <span className="mt-3 block font-semibold">{entry.label}</span>
-                      <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
-                    </button>
-                  );
-                })}
+                {takeOutModes
+                  .filter((entry) => mapsEnabled || entry.value !== "delivery")
+                  .map((entry) => {
+                    const Icon = entry.icon;
+                    const selected = mode === entry.value;
+                    return (
+                      <button
+                        key={entry.value}
+                        type="button"
+                        onClick={() => {
+                          setMode(entry.value);
+                          setReviewed(false);
+                        }}
+                        className={`rounded-2xl border p-4 text-left transition ${selected ? "border-zb-bone bg-zb-bone/10" : "border-zb-sage/30 bg-zb-primary-dark/35 hover:border-zb-sage"}`}
+                      >
+                        <Icon className={`size-5 ${selected ? "text-zb-bone" : "text-zb-cream/60"}`} />
+                        <span className="mt-3 block font-semibold">{entry.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-zb-cream/55">{entry.detail}</span>
+                      </button>
+                    );
+                  })}
               </div>
+              {!mapsEnabled && (
+                <p className="mt-3 px-1 text-xs leading-5 text-zb-cream/55">
+                  Delivery is temporarily unavailable - please choose Pickup.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -566,13 +691,18 @@ export function CheckoutForm({
                             checked={selectedAddressId === a.id}
                             onChange={() => {
                               setSelectedAddressId(a.id);
-                              setDeliveryTier(a.tier);
+                              setMapDetails(null);
                             }}
                             className="peer sr-only"
                           />
                           <span className="block rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3 text-sm transition hover:border-zb-sage peer-checked:border-zb-bone peer-checked:bg-zb-bone/10 peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone">
                             <span className="font-semibold">{a.label || "Address"}</span>
                             <span className="ml-2 text-zb-cream/60">{a.street}{a.barangay ? `, ${a.barangay}` : ""}</span>
+                            {a.landmark && (
+                              <span className="mt-0.5 block text-xs text-zb-cream/45">
+                                Landmark: {a.landmark}
+                              </span>
+                            )}
                           </span>
                         </label>
                       ))}
@@ -582,7 +712,7 @@ export function CheckoutForm({
                         type="button"
                         onClick={() => {
                           setSelectedAddressId("");
-                          setDeliveryTier("");
+                          setMapDetails(null);
                         }}
                         className="mt-3 text-sm font-semibold text-zb-bone hover:underline"
                       >
@@ -591,70 +721,61 @@ export function CheckoutForm({
                     )}
                   </fieldset>
                 )}
-                <label className="text-sm font-medium sm:col-span-2">
-                  Delivery address
-                  <textarea name="street" required={!selectedAddressId} autoComplete="street-address" onChange={() => selectedAddressId && setSelectedAddressId("")} className={textareaClass} placeholder="House number, street, subdivision" />
-                </label>
-                <label className="text-sm font-medium">
-                  Barangay
-                  <input name="barangay" required={!selectedAddressId} onChange={() => selectedAddressId && setSelectedAddressId("")} className={inputClass} placeholder="Barangay" />
-                </label>
-                <label className="text-sm font-medium">
-                  Landmark
-                  <input name="landmark" className={inputClass} placeholder="Near the red gate" />
-                </label>
-                <fieldset className="sm:col-span-2">
-                  <legend className="text-sm font-medium">Approximate distance from Zombeans</legend>
-                  <p className="mt-1 text-xs text-zb-cream/50">
-                    Pick the closest estimate. Maps will calculate this automatically once connected.
-                  </p>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {DELIVERY_TIERS.map((tier) => (
-                      <label key={tier.value} className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name="deliveryTier"
-                          value={tier.value}
-                          required
-                          checked={deliveryTier === tier.value}
-                          onChange={(event) => setDeliveryTier(event.target.value)}
-                          className="peer sr-only"
-                        />
-                        <span className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 transition hover:border-zb-sage hover:bg-zb-sage/10 peer-checked:border-zb-bone peer-checked:bg-zb-bone/10 peer-focus-visible:ring-2 peer-focus-visible:ring-zb-bone">
-                          <span className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center rounded-full bg-zb-sage/15 text-zb-bone peer-checked:bg-zb-bone">
-                              <MapPin className="size-4" />
-                            </span>
-                            <span className="text-sm font-semibold">{tier.label}</span>
-                          </span>
-                          <span className="font-mono-tabular text-sm font-bold text-zb-bone">
-                            {formatPeso(tier.feeCents)}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                    <label className="cursor-pointer sm:col-span-2">
-                      <input
-                        type="radio"
-                        name="deliveryTier"
-                        value="out-of-zone"
-                        required
-                        checked={deliveryTier === "out-of-zone"}
-                        onChange={(event) => setDeliveryTier(event.target.value)}
-                        className="peer sr-only"
-                      />
-                      <span className="flex min-h-14 items-center justify-between rounded-xl border border-zb-sage/25 bg-zb-primary-dark/25 px-4 text-sm text-zb-cream/55 transition hover:border-zb-danger/50 peer-checked:border-zb-danger peer-checked:bg-zb-danger/10 peer-checked:text-zb-cream peer-focus-visible:ring-2 peer-focus-visible:ring-zb-danger">
-                        <span>More than 6 km away</span>
-                        <span className="text-xs font-semibold uppercase tracking-wider">Pickup only</span>
-                      </span>
-                    </label>
-                  </div>
-                  {deliveryTier === "out-of-zone" && (
-                    <span className="mt-2 block rounded-lg border border-zb-danger/40 bg-zb-danger/10 p-3 text-xs leading-5 text-zb-cream">
-                      Sorry, that is outside our delivery zone. Switch to Pickup and your cart stays right here.
-                    </span>
+                <div className="sm:col-span-2 space-y-3">
+                  {selectedAddressId && !savedHasCoords && (
+                    <p className="rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-3 py-2 text-xs leading-5 text-zb-cream/75">
+                      This saved address needs a pin - drop it on the map to
+                      confirm the delivery fee.
+                    </p>
                   )}
-                </fieldset>
+                  {selectedAddressId && savedHasCoords && (
+                    <p className="px-1 text-xs leading-5 text-zb-cream/55">
+                      Showing your saved address on the map. Drag the pin or
+                      search to deliver somewhere else.
+                    </p>
+                  )}
+                  <DeliveryMapPicker
+                    key={selectedAddressId || "new"}
+                    apiKey={mapsApiKey!}
+                    storeLat={storeLat}
+                    storeLng={storeLng}
+                    tiers={deliveryTiers}
+                    maxKm={deliveryMaxKm}
+                    initialLat={savedHasCoords ? savedSelected!.lat! : undefined}
+                    initialLng={savedHasCoords ? savedSelected!.lng! : undefined}
+                    onChange={setMapDetails}
+                    onGpsDetected={setGps}
+                  />
+                  <label className="block text-sm font-medium">
+                    Landmark / delivery notes
+                    <input name="landmark" className={inputClass} placeholder="Near the red gate, unit number, etc." />
+                  </label>
+                </div>
+
+                {/* Two pieces of location ride along with the order: the
+                    delivery address (manual text below / saved / map pin, which
+                    drives the fee) and the device's auto-detected GPS reading
+                    (captured separately, shown here, used only to help the rider
+                    navigate). The manual text never affects pricing. */}
+                <div className="sm:col-span-2 space-y-3">
+                  {gps && (
+                    <div className="rounded-xl border border-zb-sage/30 bg-zb-primary-dark/35 px-4 py-3">
+                      <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-zb-cream/45">
+                        <MapPin className="size-3.5 text-zb-bone" /> Auto-detected
+                        location
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-zb-cream/80">
+                        {gps.address ??
+                          `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}`}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-zb-cream/45">
+                        Captured from your device and sent with the order to help
+                        the rider find you. We still deliver to the address you
+                        provide.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -704,7 +825,7 @@ export function CheckoutForm({
           <h2 className="font-display text-3xl">YOUR ORDER</h2>
           <Link href="/cart" className="text-xs font-semibold text-zb-bone hover:underline">Edit cart</Link>
         </div>
-        <div className="mt-5 max-h-72 space-y-3 overflow-y-auto pr-1">
+        <div className="checkout-order-scroll mt-5 max-h-72 space-y-3 overflow-y-auto pr-3">
           {lines.map((line) => (
             <div key={line.id} className="grid grid-cols-[3.25rem_1fr_auto] items-center gap-3">
               <div className="relative aspect-square overflow-hidden rounded-lg bg-zb-cream/90">
@@ -715,7 +836,9 @@ export function CheckoutForm({
                 <p className="truncate text-xs text-zb-cream/45">{line.variationLabel}</p>
                 {line.modifiers?.length ? (
                   <p className="truncate text-[11px] text-zb-cream/35">
-                    {line.modifiers.map((modifier) => modifier.name).join(", ")}
+                    {line.modifiers
+                      .map((modifier) => getModifierDisplayName(modifier))
+                      .join(", ")}
                   </p>
                 ) : null}
                 {line.itemNote ? (
@@ -730,12 +853,38 @@ export function CheckoutForm({
         </div>
         <div className="mt-5 space-y-3 border-t border-zb-sage/25 pt-4 text-sm">
           <div className="flex justify-between text-zb-cream/65"><span>Subtotal</span><span className="font-mono-tabular text-zb-cream">{formatPeso(subtotal)}</span></div>
-          <div className="flex justify-between text-zb-cream/65"><span>Delivery fee</span><span className="font-mono-tabular text-zb-cream">{deliveryFee ? formatPeso(deliveryFee) : "-"}</span></div>
+          <div className="flex justify-between gap-4 text-zb-cream/65">
+            <span>Delivery fee</span>
+            <span className="text-right font-mono-tabular text-zb-cream">
+              {mode === "delivery" && freeDeliveryEligible ? (
+                <span className="font-sans text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">
+                  Free Delivery
+                </span>
+              ) : deliveryFee ? (
+                formatPeso(deliveryFee)
+              ) : (
+                "-"
+              )}
+            </span>
+          </div>
+          {mode === "delivery" && (
+            <p
+              className={`rounded-lg border px-3 py-2 text-xs leading-5 ${
+                freeDeliveryEligible
+                  ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200"
+                  : "border-zb-bone/30 bg-zb-bone/10 text-zb-cream/70"
+              }`}
+            >
+              {freeDeliveryEligible
+                ? "Free delivery unlocked for this order."
+                : `${formatPeso(freeDeliveryRemaining)} more to unlock free delivery.`}
+            </p>
+          )}
           <div className="flex justify-between border-t border-zb-sage/25 pt-3 text-base font-bold"><span>Total</span><span className="font-mono-tabular text-zb-bone">{formatPeso(total)}</span></div>
         </div>
 
         {!reviewed ? (
-          <button type="submit" disabled={requiresAccount || deliveryTier === "out-of-zone" || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !effectiveIsLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
+          <button type="submit" disabled={requiresAccount || !deliveryReady || (mode === "pickup" && pickupSlots.length === 0) || (mode === "delivery" && !effectiveIsLoggedIn)} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-zb-bone px-4 font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:cursor-not-allowed disabled:opacity-45">
             Review order <Check className="size-4" />
           </button>
         ) : (

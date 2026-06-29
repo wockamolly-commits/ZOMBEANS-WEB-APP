@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getStaffProfile, hasStaffPermission } from "@/lib/admin";
+import {
+  formatRejectionReason,
+  isOrderRejectionReason,
+  type OrderRejectionReason,
+} from "@/lib/order-rejection";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type OrderStatus =
@@ -37,6 +42,8 @@ function friendly(message: string | undefined): string {
     return "Wait for the online payment confirmation before completing this order.";
   if (message.includes("PAYMENT_STAGE_LOCKED"))
     return "Payment can only be marked paid once the order is ready.";
+  if (message.includes("CASH_DELIVERY_RIDER_ONLY"))
+    return "Only the assigned rider can confirm cash collection and delivery.";
   if (message.includes("DELIVERY_ONLY"))
     return "Riders can only be assigned to delivery orders.";
   if (message.includes("ASSIGNMENT_LOCKED"))
@@ -69,6 +76,37 @@ export async function setOrderStatus(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
+  revalidatePath("/workspace");
+  return { ok: true };
+}
+
+export async function rejectOrder(
+  orderId: string,
+  reason: OrderRejectionReason,
+  note?: string
+): Promise<ActionResult> {
+  const profile = await getStaffProfile();
+  if (!profile || !hasStaffPermission(profile, "orders:manage"))
+    return forbidden();
+
+  if (!isOrderRejectionReason(reason)) {
+    return { ok: false, error: "Select a rejection reason." };
+  }
+
+  const supabase = await createAdminSessionClient();
+  const { error } = await supabase.rpc("staff_set_order_status", {
+    p_order_id: orderId,
+    p_to: "rejected",
+    p_reason: formatRejectionReason(reason, note),
+  });
+  if (error) {
+    console.error("[admin] rejectOrder failed:", error);
+    return { ok: false, error: friendly(error.message) };
+  }
+
+  revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }
@@ -92,6 +130,7 @@ export async function recordPayment(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }
@@ -115,6 +154,7 @@ export async function assignRider(
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   return { ok: true };
 }
 
@@ -133,6 +173,7 @@ export async function advanceOrder(orderId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/workspace/orders");
+  revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
   return { ok: true };
 }
