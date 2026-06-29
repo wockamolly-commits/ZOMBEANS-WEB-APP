@@ -413,12 +413,6 @@ export function CheckoutForm({
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!session) {
-          setSubmitError("Please refresh checkout and sign in again.");
-          setSubmitting(false);
-          return;
-        }
-
         if (session) {
           const expiresAtMs = session.expires_at
             ? session.expires_at * 1000
