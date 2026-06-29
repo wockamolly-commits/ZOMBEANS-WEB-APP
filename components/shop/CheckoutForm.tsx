@@ -432,18 +432,11 @@ export function CheckoutForm({
         }
       }
 
-      if (
-        mode === "delivery" &&
-        !operationsRole &&
-        !submissionInput.customerAccessToken
-      ) {
-        setSubmitError(
-          "We could not verify your sign-in session. Please refresh checkout and try again."
-        );
-        setSubmitting(false);
-        return;
-      }
-
+      // The browser-forwarded access token is only an optimization. On
+      // production the browser sometimes can't read its own session cookie even
+      // though the server can (the page rendered signed-in), so we must NOT gate
+      // checkout on it here — placeOrder authenticates from the server cookie
+      // session as a fallback and is the source of truth for the friendly error.
       const result = await placeOrder(submissionInput);
       if (result && !result.ok) {
         setSubmitError(result.error);
