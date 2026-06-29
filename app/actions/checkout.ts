@@ -53,7 +53,6 @@ export async function placeOrder(
   let customerSupabase = await createClient();
   let {
     data: { user: customerUser },
-    error: customerUserError,
   } = await customerSupabase.auth.getUser();
 
   if (!customerUser && input.customerAccessToken) {
@@ -74,14 +73,10 @@ export async function placeOrder(
     );
     const {
       data: { user: tokenUser },
-      error: tokenUserError,
     } = await tokenSupabase.auth.getUser(input.customerAccessToken);
     if (tokenUser) {
       customerSupabase = tokenSupabase;
       customerUser = tokenUser;
-      customerUserError = null;
-    } else if (!customerUserError) {
-      customerUserError = tokenUserError;
     }
   }
 
@@ -103,15 +98,6 @@ export async function placeOrder(
       ok: false,
       error:
         "The café is closed right now, so we can't take this order. Please order during our operating hours.",
-    };
-  }
-
-  if (input.paymentMethod === "cash" && !customerUser && !useSuperAdminCheckout) {
-    return {
-      ok: false,
-      error: customerUserError
-        ? "We could not verify your sign-in session. Please refresh checkout and try again."
-        : "Please sign in or create an account to pay with cash.",
     };
   }
 

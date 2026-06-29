@@ -300,8 +300,9 @@ export function CheckoutForm({
     : browserLoggedIn ?? isLoggedIn;
   const isTakeOut = mode === "pickup" || mode === "delivery";
   const dineInAvailable = physicalOpen;
-  // Cash orders must be tied to an account for tracking and accountability.
-  const requiresAccount = !effectiveIsLoggedIn && paymentMethod === "cash";
+  // Pickup and dine-in cash orders can be placed as guests. Delivery still
+  // requires a signed-in customer through the delivery-specific guard below.
+  const requiresAccount = false;
   const subtotal = getCartSubtotal(lines);
   // Delivery is Maps-only. Fee preview comes from the server-confirmed map
   // pick, or for a saved address that already has coordinates, its stored
