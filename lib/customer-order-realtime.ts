@@ -14,7 +14,11 @@ export type CustomerServiceMode =
   | "pickup"
   | "delivery";
 
-export type CustomerOrderAlertStatus = "ready" | "completed" | "rejected";
+export type CustomerOrderAlertStatus =
+  | "ready"
+  | "out_for_delivery"
+  | "completed"
+  | "rejected";
 
 export type CustomerOrderStatusPayload = {
   shortCode: string;
@@ -48,8 +52,17 @@ export function isCustomerReadyAlert(
 ): status is "ready" {
   return (
     status === "ready" &&
-    (serviceMode === "pickup" || serviceMode === "dine_in")
+    (serviceMode === "pickup" ||
+      serviceMode === "dine_in" ||
+      serviceMode === "delivery")
   );
+}
+
+export function isCustomerOutForDeliveryAlert(
+  status: CustomerOrderStatus,
+  serviceMode: CustomerServiceMode | null | undefined
+): status is "out_for_delivery" {
+  return status === "out_for_delivery" && serviceMode === "delivery";
 }
 
 export function isCustomerOrderAlert(
@@ -58,6 +71,7 @@ export function isCustomerOrderAlert(
 ): status is CustomerOrderAlertStatus {
   return (
     isCustomerTerminalAlertStatus(status) ||
-    isCustomerReadyAlert(status, serviceMode)
+    isCustomerReadyAlert(status, serviceMode) ||
+    isCustomerOutForDeliveryAlert(status, serviceMode)
   );
 }

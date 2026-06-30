@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BellRing, CheckCircle2, XCircle } from "lucide-react";
+import { BellRing, CheckCircle2, Truck, XCircle } from "lucide-react";
 import type {
   RealtimePostgresChangesPayload,
   SupabaseClient,
@@ -135,6 +135,12 @@ function upsertStoredOrder(
 
 function toastCopy(status: CustomerOrderAlertStatus, serviceMode: CustomerServiceMode | null) {
   if (status === "ready") {
+    if (serviceMode === "delivery") {
+      return {
+        title: "Order ready for delivery",
+        detail: "Your delivery order is packed and waiting for a rider.",
+      };
+    }
     return {
       title:
         serviceMode === "dine_in"
@@ -146,7 +152,19 @@ function toastCopy(status: CustomerOrderAlertStatus, serviceMode: CustomerServic
           : "Your pickup order is ready at the counter.",
     };
   }
+  if (status === "out_for_delivery") {
+    return {
+      title: "Order out for delivery",
+      detail: "Your rider is on the way with your order.",
+    };
+  }
   if (status === "completed") {
+    if (serviceMode === "delivery") {
+      return {
+        title: "Order delivered",
+        detail: "Your delivery has arrived. Enjoy!",
+      };
+    }
     return {
       title: "Order completed",
       detail: "Thanks for ordering from Zombeans.",
@@ -295,6 +313,13 @@ export function CustomerOrderNotificationsProvider({
               { at: 0.16, freq: 783.99, gain: 0.38, duration: 0.22, type: "sine" },
               { at: 0.38, freq: 987.77, gain: 0.3, duration: 0.2, type: "sine" },
             ]
+        : status === "out_for_delivery"
+          ? [
+              { at: 0, freq: 523.25, gain: 0.32, duration: 0.18, type: "sine" },
+              { at: 0.18, freq: 659.25, gain: 0.36, duration: 0.18, type: "sine" },
+              { at: 0.36, freq: 523.25, gain: 0.3, duration: 0.18, type: "sine" },
+              { at: 0.54, freq: 659.25, gain: 0.34, duration: 0.2, type: "sine" },
+            ]
         : [
             { at: 0, freq: 659.25, gain: 0.3, duration: 0.24, type: "sine" },
             { at: 0.14, freq: 880, gain: 0.34, duration: 0.24, type: "sine" },
@@ -390,7 +415,9 @@ export function CustomerOrderNotificationsProvider({
             ? [120, 60, 160]
             : next.status === "ready"
               ? [160, 70, 160]
-              : [220]
+              : next.status === "out_for_delivery"
+                ? [90, 50, 90, 50, 140]
+                : [220]
         );
         showToast({
           key: Date.now(),
@@ -554,7 +581,12 @@ export function CustomerOrderNotificationsProvider({
   if (disabled) return <>{children}</>;
 
   const copy = toast ? toastCopy(toast.status, toast.serviceMode) : null;
-  const Icon = toast?.status === "rejected" ? XCircle : CheckCircle2;
+  const Icon =
+    toast?.status === "rejected"
+      ? XCircle
+      : toast?.status === "out_for_delivery"
+        ? Truck
+        : CheckCircle2;
 
   return (
     <>
