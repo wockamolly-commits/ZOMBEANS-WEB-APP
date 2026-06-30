@@ -1,13 +1,29 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bike, Loader2, UserRoundCheck, UserRoundX } from "lucide-react";
+import {
+  Bike,
+  Check,
+  ChevronDown,
+  Loader2,
+  UserRoundCheck,
+  UserRoundX,
+} from "lucide-react";
+import { Select } from "@base-ui/react/select";
 import {
   assignRider,
   type ActionResult,
   type OrderStatus,
 } from "@/app/workspace/orders/actions";
 import type { RiderAssignment, RiderOption } from "@/components/admin/OrderCard";
+
+const NO_RIDER_VALUE = "__choose_rider__";
+
+function riderLabel(rider: RiderOption) {
+  return [rider.display_name, rider.vehicle_type, rider.plate_no]
+    .filter(Boolean)
+    .join(" - ");
+}
 
 export function RiderAssignmentControl({
   orderId,
@@ -28,6 +44,7 @@ export function RiderAssignmentControl({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const locked = status === "out_for_delivery" || status === "completed";
+  const selectedRider = riders.find((rider) => rider.id === selected);
 
   function run(fn: () => Promise<ActionResult>) {
     setError(null);
@@ -52,20 +69,68 @@ export function RiderAssignmentControl({
       </p>
       {riders.length > 0 ? (
         <div className="mt-2 flex gap-2">
-          <select
-            value={selected}
-            onChange={(event) => setSelected(event.target.value)}
+          <Select.Root
+            value={selected || NO_RIDER_VALUE}
+            onValueChange={(value) =>
+              setSelected(value === NO_RIDER_VALUE || !value ? "" : value)
+            }
             disabled={pending}
-            aria-label="Delivery rider"
-            className="min-w-0 flex-1 rounded-md border border-zb-sage/30 bg-zb-primary px-2.5 py-1.5 text-xs text-zb-cream focus:border-zb-bone focus:outline-none"
           >
-            <option value="">Choose rider</option>
-            {riders.map((rider) => (
-              <option key={rider.id} value={rider.id}>
-                {rider.display_name}{rider.vehicle_type ? ` · ${rider.vehicle_type}` : ""}{rider.plate_no ? ` · ${rider.plate_no}` : ""}
-              </option>
-            ))}
-          </select>
+            <Select.Trigger
+              aria-label="Delivery rider"
+              className="group flex h-9 min-w-0 flex-1 items-center rounded-md border border-zb-sage/30 bg-zb-primary px-2.5 text-left text-xs font-semibold text-zb-cream shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition hover:border-zb-sage/55 data-[disabled]:cursor-not-allowed data-[disabled]:opacity-55 data-[popup-open]:border-zb-bone/70 data-[popup-open]:ring-2 data-[popup-open]:ring-zb-bone/10 focus-visible:border-zb-bone/70 focus-visible:ring-2 focus-visible:ring-zb-bone/15"
+            >
+              <span className="min-w-0 flex-1 truncate">
+                {selectedRider ? riderLabel(selectedRider) : "Choose rider"}
+              </span>
+              <ChevronDown className="ml-2 size-3.5 shrink-0 text-zb-cream/50 transition group-data-[popup-open]:rotate-180 group-data-[popup-open]:text-zb-bone" />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Positioner
+                sideOffset={6}
+                align="start"
+                alignItemWithTrigger={false}
+                className="z-[80]"
+              >
+                <Select.Popup className="w-[var(--anchor-width)] min-w-64 origin-[var(--transform-origin)] overflow-hidden rounded-lg border border-zb-bone/35 bg-zb-primary-dark p-1.5 text-zb-cream shadow-[0_20px_55px_rgba(0,0,0,0.55)] outline-none transition data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+                  <Select.List className="max-h-60 overflow-y-auto overscroll-contain [scrollbar-color:rgba(229,192,123,0.6)_transparent] [scrollbar-width:thin]">
+                    <Select.Item
+                      value={NO_RIDER_VALUE}
+                      className="grid min-h-9 cursor-default grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2.5 text-xs font-semibold text-zb-cream/58 outline-none transition data-[highlighted]:bg-zb-sage/18 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:text-zb-primary-dark"
+                    >
+                      <Select.ItemText>Choose rider</Select.ItemText>
+                      <Select.ItemIndicator>
+                        <Check className="size-3.5" />
+                      </Select.ItemIndicator>
+                    </Select.Item>
+                    {riders.map((rider) => (
+                      <Select.Item
+                        key={rider.id}
+                        value={rider.id}
+                        className="group grid min-h-11 cursor-default grid-cols-[1fr_auto] items-center gap-3 rounded-md px-2.5 py-1.5 text-xs text-zb-cream/80 outline-none transition data-[highlighted]:bg-zb-sage/22 data-[highlighted]:text-zb-cream data-[selected]:bg-zb-bone data-[selected]:text-zb-primary-dark"
+                      >
+                        <Select.ItemText>
+                          <span className="block truncate font-semibold">
+                            {rider.display_name}
+                          </span>
+                          {(rider.vehicle_type || rider.plate_no) && (
+                            <span className="mt-0.5 block truncate text-[11px] text-zb-cream/45 group-data-[selected]:text-zb-primary-dark/70">
+                              {[rider.vehicle_type, rider.plate_no]
+                                .filter(Boolean)
+                                .join(" - ")}
+                            </span>
+                          )}
+                        </Select.ItemText>
+                        <Select.ItemIndicator>
+                          <Check className="size-3.5" />
+                        </Select.ItemIndicator>
+                      </Select.Item>
+                    ))}
+                  </Select.List>
+                </Select.Popup>
+              </Select.Positioner>
+            </Select.Portal>
+          </Select.Root>
           <button
             type="button"
             disabled={pending || !selected || selected === assignment?.rider_profile_id}

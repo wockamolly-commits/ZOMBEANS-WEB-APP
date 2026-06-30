@@ -68,7 +68,7 @@ export function RiderDeliveryActions({
         <button
           type="button"
           disabled={pending || !canDeliver}
-          onClick={() => run(() => markDelivered(orderId), "/rider/history")}
+          onClick={() => run(() => markDelivered(orderId), "/rider")}
           className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-zb-bone px-4 text-sm font-semibold text-zb-primary-dark transition hover:bg-zb-bone-soft disabled:opacity-45"
         >
           {pending && canDeliver ? (

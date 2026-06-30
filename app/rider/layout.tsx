@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Bike, ExternalLink, History, UserRound } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
 import { Logo } from "@/components/shared/Logo";
+import { RiderAlertsProvider } from "@/components/rider/RiderAlertsProvider";
 import { requireRider } from "@/lib/rider";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export default async function RiderLayout({
   const { profile } = await requireRider();
 
   return (
+    <RiderAlertsProvider riderId={profile.id}>
     <div className="min-h-dvh bg-zb-primary text-zb-cream">
       <header className="sticky top-0 z-40 border-b border-zb-sage/25 bg-zb-primary-strong/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-3 px-4">
@@ -63,5 +65,6 @@ export default async function RiderLayout({
       <main className="mx-auto max-w-3xl px-4 py-5">{children}</main>
       <div className="sr-only">Signed in as {profile.display_name}</div>
     </div>
+    </RiderAlertsProvider>
   );
 }

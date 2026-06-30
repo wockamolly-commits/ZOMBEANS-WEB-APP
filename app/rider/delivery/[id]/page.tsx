@@ -15,6 +15,11 @@ import { requireRider } from "@/lib/rider";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
+import {
+  coordsFrom,
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -103,12 +108,12 @@ function mapsUrl(address: DeliveryAddress) {
   const query =
     Number.isFinite(lat) && Number.isFinite(lng)
       ? `${lat},${lng}`
-      : [address.street, address.barangay, address.city].filter(Boolean).join(", ");
+      : formatSubmittedDeliveryAddress(address);
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 function addressLine(address: DeliveryAddress) {
-  return [address.street, address.barangay, address.city].filter(Boolean).join(", ");
+  return formatSubmittedDeliveryAddress(address);
 }
 
 function detectedCoords(address: DeliveryAddress): { lat: number; lng: number } | null {
@@ -120,10 +125,7 @@ function detectedCoords(address: DeliveryAddress): { lat: number; lng: number } 
 }
 
 function detectedLocation(address: DeliveryAddress) {
-  if (address.detected_address) return address.detected_address;
-  const coords = detectedCoords(address);
-  if (!coords) return "Pin unavailable";
-  return `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+  return detectedLocationLabel(address);
 }
 
 function detectedMapsUrl(address: DeliveryAddress): string | null {
@@ -131,17 +133,6 @@ function detectedMapsUrl(address: DeliveryAddress): string | null {
   return coords
     ? `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`
     : null;
-}
-
-function coordsFrom(
-  lat: number | string | null | undefined,
-  lng: number | string | null | undefined
-) {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  return Number.isFinite(parsedLat) && Number.isFinite(parsedLng)
-    ? { lat: parsedLat, lng: parsedLng }
-    : { lat: null, lng: null };
 }
 
 export default async function RiderDeliveryPage({

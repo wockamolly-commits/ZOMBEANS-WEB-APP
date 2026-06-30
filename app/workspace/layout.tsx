@@ -9,10 +9,16 @@ import {
   UsersRound,
 } from "lucide-react";
 import { AdminSignOut } from "@/components/admin/AdminSignOut";
+import {
+  AdminOrderNavBadge,
+  AdminRealtimeProvider,
+} from "@/components/admin/AdminRealtimeProvider";
 import { StoreAvailabilityControl } from "@/components/admin/StoreAvailabilityControl";
 import { Logo } from "@/components/shared/Logo";
 import { hasStaffPermission, requireStaff } from "@/lib/admin";
+import { getAdminOrderAlertSnapshot } from "@/lib/admin-order-alerts";
 import { STAFF_ROLES } from "@/lib/staff-roles";
+import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { getStoreAvailability } from "@/lib/store-availability-data";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +35,10 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { profile } = await requireStaff();
+  const canViewOrders = hasStaffPermission(profile, "orders:view");
+  const alertSnapshot = canViewOrders
+    ? await getAdminOrderAlertSnapshot(await createAdminSessionClient())
+    : { pendingCount: 0, orders: [] };
   const storeAvailability = hasStaffPermission(profile, "store:availability")
     ? await getStoreAvailability()
     : null;
@@ -51,6 +61,10 @@ export default async function AdminLayout({
         : "Staff";
 
   return (
+    <AdminRealtimeProvider
+      canViewOrders={canViewOrders}
+      initialSnapshot={alertSnapshot}
+    >
     <div className="min-h-dvh bg-zb-primary text-zb-cream">
       <header className="sticky top-0 z-40 border-b border-zb-sage/25 bg-zb-primary-strong/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
@@ -79,6 +93,7 @@ export default async function AdminLayout({
             >
               <Icon className="size-4" />
               {label}
+              {href === "/workspace/orders" && <AdminOrderNavBadge />}
             </Link>
           ))}
           <Link
@@ -99,5 +114,6 @@ export default async function AdminLayout({
         <StoreAvailabilityControl state={storeAvailability} />
       )}
     </div>
+    </AdminRealtimeProvider>
   );
 }

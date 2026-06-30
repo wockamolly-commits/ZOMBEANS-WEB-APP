@@ -7,6 +7,7 @@ import {
   isOrderRejectionReason,
   type OrderRejectionReason,
 } from "@/lib/order-rejection";
+import { broadcastCustomerOrderStatus } from "@/lib/customer-order-broadcasts";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type OrderStatus =
@@ -75,6 +76,7 @@ export async function setOrderStatus(
     return { ok: false, error: friendly(error.message) };
   }
 
+  await broadcastCustomerOrderStatus(orderId);
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
@@ -105,6 +107,7 @@ export async function rejectOrder(
     return { ok: false, error: friendly(error.message) };
   }
 
+  await broadcastCustomerOrderStatus(orderId);
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");
@@ -172,6 +175,7 @@ export async function advanceOrder(orderId: string): Promise<ActionResult> {
     return { ok: false, error: friendly(error.message) };
   }
 
+  await broadcastCustomerOrderStatus(orderId);
   revalidatePath("/workspace/orders");
   revalidatePath("/workspace/orders/history");
   revalidatePath("/workspace");

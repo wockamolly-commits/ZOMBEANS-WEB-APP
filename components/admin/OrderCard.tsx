@@ -99,7 +99,9 @@ function nextAction(order: AdminOrder) {
     return { label: "Mark ready", disabled: false };
   }
   if (order.status === "ready" && order.service_mode === "delivery") {
-    return { label: "Send out", disabled: !order.assignment };
+    // Delivery orders move to "Out for delivery" only when the assigned rider
+    // confirms pickup from their dashboard — no manual staff "Send out" step.
+    return null;
   }
   if (order.status === "ready") {
     return {
@@ -352,8 +354,10 @@ export function OrderCard({
         </span>
       </div>
 
+      {/* Rider assignment lives in the Ready section: editable once ready, then
+          read-only while the order is out for delivery / completed. */}
       {order.service_mode === "delivery" &&
-        !["pending", "rejected", "cancelled"].includes(order.status) && (
+        ["ready", "out_for_delivery", "completed"].includes(order.status) && (
           <RiderAssignmentControl
             key={order.assignment?.rider_profile_id ?? "unassigned"}
             orderId={order.id}

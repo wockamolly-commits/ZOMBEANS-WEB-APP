@@ -11,6 +11,10 @@ import {
 import { requireRider } from "@/lib/rider";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
+import {
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,8 @@ type DeliveryAddress = {
   city: string;
   landmark: string | null;
   delivery_notes: string | null;
+  lat: number | string | null;
+  lng: number | string | null;
   detected_lat: number | string | null;
   detected_lng: number | string | null;
   detected_address: string | null;
@@ -64,20 +70,6 @@ function first(value: string | string[] | undefined): string {
 function toArray<T>(value: Embedded<T> | undefined): T[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
-}
-
-function addressLine(address: DeliveryAddress | null): string {
-  if (!address) return "Address unavailable";
-  return [address.street, address.barangay, address.city].filter(Boolean).join(", ");
-}
-
-function detectedLocation(address: DeliveryAddress | null): string {
-  if (!address) return "Pin unavailable";
-  if (address.detected_address) return address.detected_address;
-  const lat = Number(address.detected_lat);
-  const lng = Number(address.detected_lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "Pin unavailable";
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
 
 function formatDateTime(value: string | null): string {
@@ -143,7 +135,7 @@ export default async function RiderHistoryPage({
          total_cents, notes,
          delivery_addresses (
            street, barangay, city, landmark, delivery_notes,
-           detected_lat, detected_lng, detected_address
+           lat, lng, detected_lat, detected_lng, detected_address
          ),
          payments ( method, status, reference )
        )`
@@ -271,7 +263,7 @@ function HistoryCard({ row }: { row: CompletedDelivery }) {
           <p className="mt-1 flex items-start gap-2">
             <MapPin className="mt-0.5 size-4 shrink-0 text-zb-sage" />
             <span>
-              {addressLine(address)}
+              {formatSubmittedDeliveryAddress(address)}
               {address?.landmark && (
                 <span className="mt-1 block text-xs text-zb-cream/45">
                   Landmark: {address.landmark}
@@ -297,7 +289,11 @@ function HistoryCard({ row }: { row: CompletedDelivery }) {
             label="Payment"
             value={`${payment?.method ?? "Payment"} - ${payment?.status ?? "unknown"}`}
           />
-          <Meta icon={MapPin} label="Detected pin" value={detectedLocation(address)} />
+          <Meta
+            icon={MapPin}
+            label="Detected pin"
+            value={detectedLocationLabel(address)}
+          />
           <Meta icon={ReceiptText} label="Assigned" value={formatDateTime(row.assigned_at)} />
           <Meta icon={ReceiptText} label="Picked up" value={formatDateTime(row.picked_up_at)} />
         </div>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireRider } from "@/lib/rider";
+import { broadcastCustomerOrderStatus } from "@/lib/customer-order-broadcasts";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type RiderActionResult = { ok: true } | { ok: false; error: string };
@@ -36,6 +37,7 @@ export async function markPickedUp(
     return { ok: false, error: friendly(error.message) };
   }
 
+  await broadcastCustomerOrderStatus(orderId);
   revalidatePath("/rider");
   revalidatePath("/rider/history");
   revalidatePath(`/rider/delivery/${orderId}`);
@@ -55,6 +57,7 @@ export async function markDelivered(
     return { ok: false, error: friendly(error.message) };
   }
 
+  await broadcastCustomerOrderStatus(orderId);
   revalidatePath("/rider");
   revalidatePath("/rider/history");
   revalidatePath(`/rider/delivery/${orderId}`);

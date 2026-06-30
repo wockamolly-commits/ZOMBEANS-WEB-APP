@@ -12,9 +12,14 @@ import {
 import { requireRider } from "@/lib/rider";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 import { formatPeso } from "@/lib/peso";
-import { RiderRefreshButton } from "@/components/rider/RiderRefreshButton";
+import { RiderLiveControls } from "@/components/rider/RiderLiveControls";
 import { RiderNavigationMap } from "@/components/rider/RiderNavigationMap";
 import { getGoogleMapsBrowserKey } from "@/lib/google-maps";
+import {
+  coordsFrom,
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -102,28 +107,7 @@ function statusLabel(status: DeliveryStatus): string {
 
 function addressLine(addresses: Embedded<DeliveryAddress>): string {
   const address = toArray(addresses)[0];
-  if (!address) return "Address unavailable";
-  return [address.street, address.barangay, address.city].filter(Boolean).join(", ");
-}
-
-function detectedLocation(address: DeliveryAddress | undefined): string {
-  if (!address) return "Pin unavailable";
-  if (address.detected_address) return address.detected_address;
-  const lat = Number(address.detected_lat ?? address.lat);
-  const lng = Number(address.detected_lng ?? address.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "Pin unavailable";
-  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-}
-
-function coordsFrom(
-  lat: number | string | null | undefined,
-  lng: number | string | null | undefined
-) {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  return Number.isFinite(parsedLat) && Number.isFinite(parsedLng)
-    ? { lat: parsedLat, lng: parsedLng }
-    : { lat: null, lng: null };
+  return formatSubmittedDeliveryAddress(address);
 }
 
 export default async function RiderHome() {
@@ -211,7 +195,7 @@ export default async function RiderHome() {
               Active now
             </span>
           </div>
-          <RiderRefreshButton />
+          <RiderLiveControls />
         </div>
 
         {active.length === 0 ? (
@@ -232,7 +216,7 @@ export default async function RiderHome() {
               return (
                 <article
                   key={order_id}
-                  className="rounded-xl border border-zb-sage/20 bg-zb-primary-strong/55 p-4"
+                  className="zb-order-card rounded-xl border border-zb-sage/20 bg-zb-primary-strong/55 p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -287,7 +271,7 @@ export default async function RiderHome() {
                       <MapPin className="mt-0.5 size-4 shrink-0 text-zb-sage" />
                       Auto-detected pin:{" "}
                       <span className="font-mono-tabular text-zb-cream/70">
-                        {detectedLocation(address)}
+                        {detectedLocationLabel(address)}
                       </span>
                     </p>
                     <p className="inline-flex items-center gap-1.5 text-xs text-zb-cream/45">

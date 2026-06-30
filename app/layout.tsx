@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Anton, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { MobileCartBar } from "@/components/shop/MobileCartBar";
+import { CustomerOrderNotificationsProvider } from "@/components/shop/CustomerOrderNotificationsProvider";
 
 const anton = Anton({
   variable: "--font-anton",
@@ -50,8 +51,10 @@ export default function RootLayout({
       className={`${anton.variable} ${inter.variable} ${jetbrainsMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <MobileCartBar />
+        <CustomerOrderNotificationsProvider>
+          {children}
+          <MobileCartBar />
+        </CustomerOrderNotificationsProvider>
       </body>
     </html>
   );

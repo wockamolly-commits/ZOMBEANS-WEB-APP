@@ -7,6 +7,11 @@ import { createReadOnlyClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/peso";
 import { CartClearOnArrival } from "@/components/shop/CartClearOnArrival";
 import { OrderStatusPoller } from "@/components/shop/OrderStatusPoller";
+import { OrderTrackingRegistrar } from "@/components/shop/OrderTrackingRegistrar";
+import {
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -90,34 +95,6 @@ function statusIndex(
   return timeline.findIndex((step) => step.key === status);
 }
 
-function submittedAddress(
-  address: NonNullable<OrderPayload["delivery_address"]>
-) {
-  return [address.street, address.barangay, address.city]
-    .filter(Boolean)
-    .join(", ");
-}
-
-function coordsLabel(lat: number | string, lng: number | string) {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-    return null;
-  }
-  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
-}
-
-function detectedLocation(
-  address: NonNullable<OrderPayload["delivery_address"]>
-) {
-  return (
-    address.detected_address ??
-    (address.detected_lat != null && address.detected_lng != null
-      ? coordsLabel(address.detected_lat, address.detected_lng)
-      : coordsLabel(address.lat, address.lng))
-  );
-}
-
 export async function generateMetadata({
   params,
 }: PageProps<"/order/[code]">) {
@@ -148,6 +125,11 @@ export default async function OrderTrackingPage({
     <>
       <Header />
       {fresh ? <CartClearOnArrival /> : null}
+      <OrderTrackingRegistrar
+        shortCode={order.short_code}
+        status={order.status}
+        serviceMode={order.service_mode}
+      />
       <OrderStatusPoller terminal={terminal} />
       <main className="flex-1">
         <DoodleBg>
@@ -311,7 +293,7 @@ export default async function OrderTrackingPage({
                     <p className="mt-1 flex items-start gap-2">
                       <MapPin className="mt-0.5 size-4 shrink-0 text-zb-sage" />
                       <span>
-                        {submittedAddress(order.delivery_address)}
+                        {formatSubmittedDeliveryAddress(order.delivery_address)}
                         {order.delivery_address.landmark && (
                           <span className="mt-1 block text-xs text-zb-cream/45">
                             Landmark: {order.delivery_address.landmark}
@@ -332,8 +314,10 @@ export default async function OrderTrackingPage({
                     <p className="mt-1 flex items-start gap-2">
                       <MapPin className="mt-0.5 size-4 shrink-0 text-zb-bone" />
                       <span>
-                        {detectedLocation(order.delivery_address) ??
-                          "Not available"}
+                        {detectedLocationLabel(
+                          order.delivery_address,
+                          "Not available"
+                        )}
                       </span>
                     </p>
                   </div>
