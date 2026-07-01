@@ -8,6 +8,13 @@ export type PushPayload = {
   body: string;
   url: string;
   tag?: string;
+  // Android buzz pattern for the OS-shown notification (ignored on iOS).
+  vibrate?: number[];
+  // Keep the notification on screen until the user acts (high-priority alerts).
+  requireInteraction?: boolean;
+  // Re-alert when a same-tag notification is already showing. Defaults to true
+  // in the service worker when a tag is present; set false to suppress.
+  renotify?: boolean;
 };
 
 type SubscriptionRow = {

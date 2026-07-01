@@ -152,6 +152,12 @@ export async function broadcastCustomerOrderStatus(orderId: string) {
         body,
         url: `/order/${row.short_code}`,
         tag: `order-status:${row.short_code}`,
+        // "Ready" is the moment the customer must act on, so buzz harder.
+        vibrate:
+          row.status === "ready"
+            ? [240, 80, 240, 80, 360]
+            : [160, 70, 160],
+        requireInteraction: row.status === "ready",
       });
     }
   } catch (error) {
@@ -208,6 +214,11 @@ export async function broadcastRiderOutside(orderId: string): Promise<boolean> {
       body: "Your rider is already outside your house. Please meet them to receive your order.",
       url: `/order/${row.short_code}`,
       tag: `rider-outside:${row.short_code}`,
+      // Door-knock buzz; keep on screen and re-alert on every re-notify since
+      // the customer needs to physically go meet the rider.
+      vibrate: [200, 90, 200, 90, 200, 90, 360],
+      requireInteraction: true,
+      renotify: true,
     });
 
     return sent;

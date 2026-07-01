@@ -127,6 +127,40 @@ last_seen_at    timestamptz
 | iOS: prompt to "Add to Home Screen" | Silent degradation | User's explicit choice; only path to close the iOS gap. |
 | `tag` field for OS-level dedup | No dedup / app-side only | Prevents notification stacking on repeat events (e.g. rider re-ring). |
 
+## Cross-Device Reliability Hardening (2026-07-01)
+
+Follow-up after real-device testing showed background alerts were unreliable on
+iPhone and Android popups didn't appear when the app was closed.
+
+- **PWA manifest is mandatory for iOS push.** `app/manifest.ts` declares
+  `display: standalone`. iOS only delivers Web Push to a site added to the Home
+  Screen as a standalone PWA (iOS 16.4+); without a manifest, "Add to Home
+  Screen" is treated as a bookmark and the Push API is never available. Layout
+  also sets `appleWebApp` metadata + `theme-color`.
+- **Silent per-order re-subscribe.** Customer subscriptions are keyed by
+  `order_code`, so a returning customer who opted in on a previous order had no
+  live subscription for the new one. `lib/use-push-subscription.ts` now, when
+  `Notification.permission === "granted"`, re-registers the SW and re-POSTs the
+  subscription for the **current** order on mount (no prompt — silent, needs no
+  user gesture). This was the main reason background popups never fired even
+  after opting in.
+- **Vibration + attention on the OS notification.** `public/sw.js` sets
+  `vibrate`, `renotify`, and `requireInteraction` on `showNotification`. The
+  notification's own `vibrate` array is the **only** way to buzz the device when
+  no page is open — honoured on Android, ignored on iOS. `renotify` makes a
+  repeat same-`tag` push (rider outside) re-alert instead of silently replacing.
+  Payloads (`PushPayload`) now carry optional `vibrate` / `requireInteraction` /
+  `renotify`; "ready" and "rider outside" use stronger patterns and stay on
+  screen until acted on.
+- **Icon 404 fixed.** `sw.js` referenced `/icon.png`, which lived at
+  `app/icon.png` (served at `/icon`). Copied `512×512` icon to
+  `public/icon.png` and `public/badge.png`.
+- **iOS haptic reality:** iOS supports neither `navigator.vibrate` nor the
+  notification `vibrate` option, and ignores custom sounds. The most iPhone can
+  do is the system banner + default notification sound/haptic, governed by the
+  user's iOS notification settings and ringer switch — not controllable from
+  the web app. Custom haptics on silent/DND are **Android-only**.
+
 ## Open Items for Implementation
 
 - Generate and store VAPID keys (local `.env` + Vercel env vars).

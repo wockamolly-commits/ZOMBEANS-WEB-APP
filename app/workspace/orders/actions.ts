@@ -169,6 +169,8 @@ export async function assignRider(
         body: `Order ${order.short_code} is ready for you to pick up.`,
         url: `/rider/delivery/${orderId}`,
         tag: `rider-assignment:${orderId}`,
+        vibrate: [220, 90, 220, 90, 360],
+        requireInteraction: true,
       });
     }
   }

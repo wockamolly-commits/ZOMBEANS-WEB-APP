@@ -3,6 +3,18 @@
 // the phone is locked, or the site isn't open. See
 // docs/web-push-notifications.md for the design.
 
+// A vibration pattern set on the notification itself is the ONLY way to buzz
+// the device when no page is open (navigator.vibrate needs a live page). It is
+// honoured on Android; iOS ignores it, but including it is harmless there.
+const DEFAULT_VIBRATE = [220, 90, 220, 90, 360];
+
+// Take control immediately so an updated worker starts handling pushes without
+// waiting for every tab to close.
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) =>
+  event.waitUntil(self.clients.claim())
+);
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {
@@ -17,7 +29,15 @@ self.addEventListener("push", (event) => {
     tag: data.tag || undefined,
     data: { url: data.url || "/" },
     icon: "/icon.png",
-    badge: "/icon.png",
+    badge: "/badge.png",
+    // Buzz on delivery (Android). Payload may override with its own pattern.
+    vibrate: Array.isArray(data.vibrate) ? data.vibrate : DEFAULT_VIBRATE,
+    // Re-alert (sound + vibration) even when a same-tag notification is already
+    // showing — critical for the repeating "rider outside" ping.
+    renotify: Boolean(data.tag) && data.renotify !== false,
+    // Keep high-priority alerts (rider outside) on screen until acted on.
+    requireInteraction: data.requireInteraction === true,
+    timestamp: Date.now(),
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

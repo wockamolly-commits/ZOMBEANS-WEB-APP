@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { MobileCartBar } from "@/components/shop/MobileCartBar";
@@ -38,6 +38,17 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_PH",
   },
+  // iOS treats the site as an installable standalone PWA — a prerequisite for
+  // Web Push on iPhone (see app/manifest.ts).
+  appleWebApp: {
+    capable: true,
+    title: "Zombeans",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1a120b",
 };
 
 export default function RootLayout({
