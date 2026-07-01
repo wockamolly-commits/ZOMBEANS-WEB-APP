@@ -7,8 +7,15 @@ import {
   type AdminOrder,
   type RiderOption,
 } from "@/components/admin/OrderCard";
-import { AdminOrdersPoller } from "@/components/admin/AdminOrdersPoller";
-import { manilaTodayStartISO } from "@/lib/admin-order-dates";
+import { AdminRealtimeControls } from "@/components/admin/AdminRealtimeProvider";
+import {
+  manilaTodayStartISO,
+  recentOrdersSinceISO,
+} from "@/lib/admin-order-dates";
+import {
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 import type { OrderStatus } from "@/app/workspace/orders/actions";
 
 export const dynamic = "force-dynamic";
@@ -83,22 +90,9 @@ type RiderRow = {
 
 type AssignmentRow = { order_id: string; rider_profile_id: string };
 
-function recentSinceISO(): string {
-  return new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
-}
-
 function firstEmbedded<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-function coordsLabel(lat: number | string, lng: number | string): string {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-    return "Pin unavailable";
-  }
-  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
 }
 
 const COLUMNS: Array<{
@@ -190,26 +184,10 @@ function toOrder(
     })),
     deliveryAddress: deliveryAddress
       ? {
-          submitted: [
-            deliveryAddress.street,
-            deliveryAddress.barangay,
-            deliveryAddress.city,
-          ]
-            .filter(Boolean)
-            .join(", "),
+          submitted: formatSubmittedDeliveryAddress(deliveryAddress),
           landmark: deliveryAddress.landmark,
           notes: deliveryAddress.delivery_notes,
-          // Prefer the separately-captured device GPS reading; fall back to the
-          // delivery coordinates for orders placed before detected_* existed.
-          detected:
-            deliveryAddress.detected_address ??
-            (deliveryAddress.detected_lat != null &&
-            deliveryAddress.detected_lng != null
-              ? coordsLabel(
-                  deliveryAddress.detected_lat,
-                  deliveryAddress.detected_lng
-                )
-              : coordsLabel(deliveryAddress.lat, deliveryAddress.lng)),
+          detected: detectedLocationLabel(deliveryAddress),
           googlePlaceId: deliveryAddress.google_place_id,
         }
       : null,
@@ -223,7 +201,7 @@ function toOrder(
 export default async function AdminOrdersPage() {
   await requireStaffPermission("orders:view", "/workspace/orders");
   const supabase = await createAdminSessionClient();
-  const since = recentSinceISO();
+  const since = recentOrdersSinceISO();
   const todayStart = manilaTodayStartISO();
 
   const [ordersResult, ridersResult] = await Promise.all([
@@ -330,7 +308,6 @@ export default async function AdminOrdersPage() {
       className="flex flex-col"
       style={{ height: "calc(100dvh - 8.5rem)", minHeight: "32rem" }}
     >
-      <AdminOrdersPoller />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl leading-none text-zb-cream">
@@ -346,6 +323,7 @@ export default async function AdminOrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <AdminRealtimeControls />
           <Link
             href="/workspace/orders/history"
             className="inline-flex items-center gap-2 rounded-xl border border-zb-sage/25 px-3 py-2 text-xs font-semibold text-zb-cream/75 transition hover:bg-zb-primary-strong hover:text-zb-cream"

@@ -18,6 +18,10 @@ import {
 } from "@/lib/admin-order-dates";
 import { OrderHistoryStatusSelect } from "@/components/admin/OrderHistoryStatusSelect";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
+import {
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 import type { OrderStatus } from "@/app/workspace/orders/actions";
 
 export const dynamic = "force-dynamic";
@@ -131,29 +135,6 @@ function serviceLabel(mode: HistoryRow["service_mode"]): string {
 function firstEmbedded<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-function submittedAddress(address: DeliveryAddress): string {
-  return [address.street, address.barangay, address.city]
-    .filter(Boolean)
-    .join(", ");
-}
-
-function coordsLabel(lat: number | string, lng: number | string): string | null {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) return null;
-  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
-}
-
-function detectedLocation(address: DeliveryAddress): string {
-  return (
-    address.detected_address ??
-    (address.detected_lat != null && address.detected_lng != null
-      ? coordsLabel(address.detected_lat, address.detected_lng)
-      : coordsLabel(address.lat, address.lng)) ??
-    "Not available"
-  );
 }
 
 function matchesSearch(row: HistoryRow, q: string): boolean {
@@ -474,7 +455,7 @@ function HistoryCard({ order }: { order: HistoryRow }) {
                   Submitted address
                 </p>
                 <p className="mt-1 text-sm text-zb-cream/75">
-                  {submittedAddress(deliveryAddress)}
+                  {formatSubmittedDeliveryAddress(deliveryAddress)}
                 </p>
                 {deliveryAddress.landmark && (
                   <p className="mt-1">Landmark: {deliveryAddress.landmark}</p>
@@ -489,7 +470,7 @@ function HistoryCard({ order }: { order: HistoryRow }) {
                   Auto-detected location
                 </p>
                 <p className="mt-1 text-sm text-zb-cream/75">
-                  {detectedLocation(deliveryAddress)}
+                  {detectedLocationLabel(deliveryAddress, "Not available")}
                 </p>
               </div>
             </div>

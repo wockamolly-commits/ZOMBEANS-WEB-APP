@@ -6,6 +6,10 @@ export type DateRange = {
   endISO: string;
 };
 
+export function recentOrdersSinceISO(now = new Date()): string {
+  return new Date(now.getTime() - 2 * DAY_MS).toISOString();
+}
+
 // Start of the current Manila calendar day, returned as a UTC ISO string.
 export function manilaTodayStartISO(now = new Date()): string {
   const ph = new Date(now.getTime() + MANILA_OFFSET_MS);

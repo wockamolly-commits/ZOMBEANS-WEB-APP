@@ -365,33 +365,43 @@ export function CheckoutForm({
         mode === "delivery" && effectiveIsLoggedIn
           ? (() => {
               const saved = savedAddresses.find((a) => a.id === selectedAddressId);
-              // A re-pin (mapDetails) wins; otherwise use the saved address's
-              // stored coordinates.
-              if (
-                saved &&
-                saved.lat != null &&
-                saved.lng != null &&
-                mapDetails === null
-              ) {
-                return {
-                  street: saved.street,
-                  barangay: saved.barangay ?? undefined,
-                  city: saved.city,
-                  landmark: saved.landmark ?? undefined,
-                  lat: saved.lat,
-                  lng: saved.lng,
-                  googlePlaceId: saved.google_place_id ?? undefined,
-                  detectedLat: gps?.lat,
-                  detectedLng: gps?.lng,
-                  detectedAddress: gps?.address ?? undefined,
-                };
+              const addressNote = data.get("landmark")
+                ? String(data.get("landmark")).trim()
+                : "";
+              // Keep the selected saved/manual address as the submitted
+              // rider-facing text. The map pin supplies/adjusts coordinates,
+              // but it should not replace the customer's saved address copy.
+              if (saved) {
+                const lat = mapDetails?.lat ?? saved.lat;
+                const lng = mapDetails?.lng ?? saved.lng;
+                if (lat != null && lng != null) {
+                  const mapPlaceId = mapDetails?.googlePlaceId;
+                  const savedPlaceId = saved.google_place_id;
+                  const savedLandmark = saved.landmark?.trim() || undefined;
+                  return {
+                    street: saved.street,
+                    barangay: saved.barangay ?? undefined,
+                    city: saved.city,
+                    landmark: savedLandmark,
+                    deliveryNotes:
+                      addressNote && addressNote !== savedLandmark
+                        ? addressNote
+                        : undefined,
+                    lat,
+                    lng,
+                    googlePlaceId: mapPlaceId ?? savedPlaceId ?? undefined,
+                    detectedLat: gps?.lat,
+                    detectedLng: gps?.lng,
+                    detectedAddress: gps?.address ?? undefined,
+                  };
+                }
               }
               if (mapDetails) {
                 return {
                   street: mapDetails.street,
                   barangay: mapDetails.barangay ?? undefined,
                   city: mapDetails.city,
-                  landmark: data.get("landmark") ? String(data.get("landmark")) : undefined,
+                  landmark: addressNote || undefined,
                   lat: mapDetails.lat,
                   lng: mapDetails.lng,
                   googlePlaceId: mapDetails.googlePlaceId ?? undefined,
@@ -704,6 +714,9 @@ export function CheckoutForm({
             )}
             {mode === "delivery" && effectiveIsLoggedIn && (
               <>
+                <p className="sm:col-span-2 rounded-xl border border-zb-bone/30 bg-zb-bone/10 px-4 py-3 text-sm leading-6 text-zb-cream/75">
+                  For better delivery accuracy, please add or select your manually submitted address.
+                </p>
                 {savedAddresses.length > 0 && (
                   <fieldset className="sm:col-span-2">
                     <legend className="text-sm font-medium">Saved addresses</legend>
@@ -757,7 +770,7 @@ export function CheckoutForm({
                   {selectedAddressId && savedHasCoords && (
                     <p className="px-1 text-xs leading-5 text-zb-cream/55">
                       Showing your saved address on the map. Drag the pin or
-                      search to deliver somewhere else.
+                      search if the pin needs a small adjustment.
                     </p>
                   )}
                   <DeliveryMapPicker

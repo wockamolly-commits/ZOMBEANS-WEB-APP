@@ -6,7 +6,15 @@ import { DoodleBg } from "@/components/shared/DoodleBg";
 import { createReadOnlyClient } from "@/lib/supabase/server";
 import { formatPeso } from "@/lib/peso";
 import { CartClearOnArrival } from "@/components/shop/CartClearOnArrival";
+import { CustomerPushOptIn } from "@/components/shop/CustomerPushOptIn";
+import { DineInReceiveOrderButton } from "@/components/shop/DineInReceiveOrderButton";
 import { OrderStatusPoller } from "@/components/shop/OrderStatusPoller";
+import { OrderTrackingRegistrar } from "@/components/shop/OrderTrackingRegistrar";
+import { RiderArrivalAcknowledgementButton } from "@/components/shop/RiderArrivalAcknowledgementButton";
+import {
+  detectedLocationLabel,
+  formatSubmittedDeliveryAddress,
+} from "@/lib/delivery-address";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +37,12 @@ type OrderPayload = {
   placed_at: string;
   accepted_at: string | null;
   ready_at: string | null;
+  ready_acknowledged_at: string | null;
   completed_at: string | null;
   rejected_reason: string | null;
   pickup_time: string | null;
+  rider_arrived: boolean | null;
+  rider_acknowledged_at: string | null;
   delivery_address: {
     street: string;
     barangay: string | null;
@@ -67,14 +78,19 @@ const SERVICE_LABEL: Record<OrderPayload["service_mode"], string> = {
   delivery: "Delivery",
 };
 
+// "rider_outside" is a synthetic timeline step backed by rider_arrived, not a
+// real order status — the order is still out_for_delivery while it shows.
+type TimelineKey = OrderPayload["status"] | "rider_outside";
+
 function timelineFor(mode: OrderPayload["service_mode"]) {
-  const steps: Array<{ key: OrderPayload["status"]; label: string }> = [
+  const steps: Array<{ key: TimelineKey; label: string }> = [
     { key: "pending", label: "Placed" },
     { key: "preparing", label: "Preparing" },
     { key: "ready", label: "Ready" },
   ];
   if (mode === "delivery") {
     steps.push({ key: "out_for_delivery", label: "Out for delivery" });
+    steps.push({ key: "rider_outside", label: "Rider outside" });
   }
   steps.push({ key: "completed", label: "Completed" });
   return steps;
@@ -82,40 +98,16 @@ function timelineFor(mode: OrderPayload["service_mode"]) {
 
 function statusIndex(
   status: OrderPayload["status"],
-  timeline: ReturnType<typeof timelineFor>
+  timeline: ReturnType<typeof timelineFor>,
+  riderArrived: boolean
 ) {
   if (status === "accepted") {
     return timeline.findIndex((step) => step.key === "preparing");
   }
-  return timeline.findIndex((step) => step.key === status);
-}
-
-function submittedAddress(
-  address: NonNullable<OrderPayload["delivery_address"]>
-) {
-  return [address.street, address.barangay, address.city]
-    .filter(Boolean)
-    .join(", ");
-}
-
-function coordsLabel(lat: number | string, lng: number | string) {
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  if (!Number.isFinite(parsedLat) || !Number.isFinite(parsedLng)) {
-    return null;
+  if (status === "out_for_delivery" && riderArrived) {
+    return timeline.findIndex((step) => step.key === "rider_outside");
   }
-  return `${parsedLat.toFixed(6)}, ${parsedLng.toFixed(6)}`;
-}
-
-function detectedLocation(
-  address: NonNullable<OrderPayload["delivery_address"]>
-) {
-  return (
-    address.detected_address ??
-    (address.detected_lat != null && address.detected_lng != null
-      ? coordsLabel(address.detected_lat, address.detected_lng)
-      : coordsLabel(address.lat, address.lng))
-  );
+  return timeline.findIndex((step) => step.key === status);
 }
 
 export async function generateMetadata({
@@ -139,8 +131,9 @@ export default async function OrderTrackingPage({
 
   if (error || !data) notFound();
   const order = data as OrderPayload;
+  const riderArrived = order.rider_arrived === true;
   const timeline = timelineFor(order.service_mode);
-  const index = statusIndex(order.status, timeline);
+  const index = statusIndex(order.status, timeline, riderArrived);
   const rejected = order.status === "rejected" || order.status === "cancelled";
   const terminal = order.status === "completed" || rejected;
 
@@ -148,7 +141,16 @@ export default async function OrderTrackingPage({
     <>
       <Header />
       {fresh ? <CartClearOnArrival /> : null}
+      <OrderTrackingRegistrar
+        shortCode={order.short_code}
+        status={order.status}
+        serviceMode={order.service_mode}
+        readyAcknowledgedAt={order.ready_acknowledged_at}
+        riderArrived={order.rider_arrived}
+        riderAcknowledgedAt={order.rider_acknowledged_at}
+      />
       <OrderStatusPoller terminal={terminal} />
+      {!terminal && <CustomerPushOptIn orderCode={order.short_code} />}
       <main className="flex-1">
         <DoodleBg>
           <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
@@ -207,29 +209,54 @@ export default async function OrderTrackingPage({
                     const done = i <= index;
                     const current = i === index;
                     return (
-                      <li
-                        key={step.key}
-                        className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                          done
-                            ? "border-zb-bone/45 bg-zb-bone/10 text-zb-cream"
-                            : "border-zb-sage/20 bg-zb-primary-dark/30 text-zb-cream/50"
-                        }`}
-                      >
-                        <span
-                          className={`flex size-7 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                      <li key={step.key}>
+                        <div
+                          className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition ${
                             done
-                              ? "bg-zb-bone text-zb-primary-dark"
-                              : "bg-zb-primary-dark text-zb-cream/55"
+                              ? "border-zb-bone/45 bg-zb-bone/10 text-zb-cream"
+                              : "border-zb-sage/20 bg-zb-primary-dark/30 text-zb-cream/50"
                           }`}
                         >
-                          {done ? <Check className="size-3.5" /> : i + 1}
-                        </span>
-                        <span className="font-semibold">{step.label}</span>
-                        {current && (
-                          <span className="ml-auto text-xs font-semibold uppercase tracking-wider text-zb-bone">
-                            Now
+                          <span
+                            className={`flex size-7 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                              done
+                                ? "bg-zb-bone text-zb-primary-dark"
+                                : "bg-zb-primary-dark text-zb-cream/55"
+                            }`}
+                          >
+                            {done ? <Check className="size-3.5" /> : i + 1}
                           </span>
-                        )}
+                          <span className="min-w-0">
+                            <span className="block font-semibold">{step.label}</span>
+                            {step.key === "rider_outside" && current && (
+                              <span className="mt-0.5 block text-xs font-medium text-zb-bone">
+                                Your rider is right outside — please head out to receive your order.
+                              </span>
+                            )}
+                          </span>
+                          {current && (
+                            <span className="ml-auto shrink-0 text-xs font-semibold uppercase tracking-wider text-zb-bone">
+                              Now
+                            </span>
+                          )}
+                        </div>
+                        {step.key === "ready" &&
+                        order.service_mode === "dine_in" &&
+                        order.status === "ready" ? (
+                          <DineInReceiveOrderButton
+                            shortCode={order.short_code}
+                            initialAcknowledgedAt={order.ready_acknowledged_at}
+                          />
+                        ) : null}
+                        {step.key === "rider_outside" &&
+                        current &&
+                        order.service_mode === "delivery" &&
+                        order.status === "out_for_delivery" ? (
+                          <RiderArrivalAcknowledgementButton
+                            shortCode={order.short_code}
+                            initialAcknowledgedAt={order.rider_acknowledged_at}
+                          />
+                        ) : null}
                       </li>
                     );
                   })}
@@ -311,7 +338,7 @@ export default async function OrderTrackingPage({
                     <p className="mt-1 flex items-start gap-2">
                       <MapPin className="mt-0.5 size-4 shrink-0 text-zb-sage" />
                       <span>
-                        {submittedAddress(order.delivery_address)}
+                        {formatSubmittedDeliveryAddress(order.delivery_address)}
                         {order.delivery_address.landmark && (
                           <span className="mt-1 block text-xs text-zb-cream/45">
                             Landmark: {order.delivery_address.landmark}
@@ -332,8 +359,10 @@ export default async function OrderTrackingPage({
                     <p className="mt-1 flex items-start gap-2">
                       <MapPin className="mt-0.5 size-4 shrink-0 text-zb-bone" />
                       <span>
-                        {detectedLocation(order.delivery_address) ??
-                          "Not available"}
+                        {detectedLocationLabel(
+                          order.delivery_address,
+                          "Not available"
+                        )}
                       </span>
                     </p>
                   </div>
