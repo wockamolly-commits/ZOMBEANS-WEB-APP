@@ -25,12 +25,26 @@ export type CustomerOrderStatusPayload = {
   status: CustomerOrderStatus;
   serviceMode: CustomerServiceMode | null;
   rejectedReason: string | null;
+  readyAcknowledgedAt?: string | null;
   changedAt: string;
 };
 
 export const CUSTOMER_ORDER_EVENT = "order-status";
+export const CUSTOMER_RIDER_OUTSIDE_EVENT = "rider-outside";
 export const CUSTOMER_ORDER_TRACKING_EVENT = "zb-customer-orders-changed";
+export const CUSTOMER_READY_ACK_EVENT = "zb-customer-ready-acknowledged";
+export const CUSTOMER_RIDER_OUTSIDE_ACK_EVENT =
+  "zb-customer-rider-outside-acknowledged";
 export const CUSTOMER_ORDER_STORAGE_KEY = "zb-customer-orders";
+
+// One-shot ping a rider sends from the field once they have arrived at the
+// customer's location. It is intentionally not an order status: the order stays
+// `out_for_delivery`, this just triggers an instant alert on the customer side.
+export type CustomerRiderOutsidePayload = {
+  shortCode: string;
+  ringId: string;
+  sentAt: string;
+};
 
 export function normalizeOrderCode(code: string) {
   return code.trim().toUpperCase();

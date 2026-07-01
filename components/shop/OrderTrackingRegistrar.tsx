@@ -16,6 +16,10 @@ type StoredCustomerOrder = {
   status: CustomerOrderStatus;
   serviceMode?: CustomerServiceMode | null;
   notifiedStatus?: CustomerOrderStatus;
+  readyAcknowledgedAt?: string | null;
+  riderOutsideNotified?: boolean;
+  riderOutsideRingAt?: string | null;
+  riderOutsideAcknowledgedAt?: string | null;
   updatedAt: string;
 };
 
@@ -40,6 +44,20 @@ function readStoredOrders(): StoredCustomerOrder[] {
               ? (candidate.serviceMode as CustomerServiceMode)
               : null,
           notifiedStatus: candidate.notifiedStatus,
+          readyAcknowledgedAt:
+            typeof candidate.readyAcknowledgedAt === "string"
+              ? candidate.readyAcknowledgedAt
+              : null,
+          riderOutsideNotified:
+            candidate.riderOutsideNotified === true ? true : undefined,
+          riderOutsideRingAt:
+            typeof candidate.riderOutsideRingAt === "string"
+              ? candidate.riderOutsideRingAt
+              : null,
+          riderOutsideAcknowledgedAt:
+            typeof candidate.riderOutsideAcknowledgedAt === "string"
+              ? candidate.riderOutsideAcknowledgedAt
+              : null,
           updatedAt:
             typeof candidate.updatedAt === "string"
               ? candidate.updatedAt
@@ -56,10 +74,16 @@ export function OrderTrackingRegistrar({
   shortCode,
   status,
   serviceMode,
+  readyAcknowledgedAt,
+  riderArrived,
+  riderAcknowledgedAt,
 }: {
   shortCode: string;
   status: CustomerOrderStatus;
   serviceMode: CustomerServiceMode;
+  readyAcknowledgedAt?: string | null;
+  riderArrived?: boolean | null;
+  riderAcknowledgedAt?: string | null;
 }) {
   useEffect(() => {
     const normalized = normalizeOrderCode(shortCode);
@@ -82,6 +106,14 @@ export function OrderTrackingRegistrar({
       status,
       serviceMode,
       notifiedStatus,
+      readyAcknowledgedAt:
+        readyAcknowledgedAt ?? existing?.readyAcknowledgedAt ?? null,
+      riderOutsideNotified:
+        existing?.riderOutsideNotified ??
+        (riderArrived === true ? true : undefined),
+      riderOutsideRingAt: existing?.riderOutsideRingAt ?? null,
+      riderOutsideAcknowledgedAt:
+        riderAcknowledgedAt ?? existing?.riderOutsideAcknowledgedAt ?? null,
       updatedAt,
     });
 
@@ -90,7 +122,14 @@ export function OrderTrackingRegistrar({
       JSON.stringify(orders.slice(0, MAX_STORED_ORDERS))
     );
     window.dispatchEvent(new Event(CUSTOMER_ORDER_TRACKING_EVENT));
-  }, [shortCode, status, serviceMode]);
+  }, [
+    readyAcknowledgedAt,
+    riderAcknowledgedAt,
+    riderArrived,
+    shortCode,
+    status,
+    serviceMode,
+  ]);
 
   return null;
 }

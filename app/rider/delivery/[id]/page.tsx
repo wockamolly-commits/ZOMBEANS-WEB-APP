@@ -64,6 +64,8 @@ type RiderAssignment = {
   assigned_at: string;
   picked_up_at: string | null;
   delivered_at: string | null;
+  arrived_at: string | null;
+  customer_ring_at: string | null;
 };
 
 type DeliveryRow = {
@@ -162,10 +164,11 @@ export default async function RiderDeliveryPage({
          lat, lng, google_place_id,
          detected_lat, detected_lng, detected_address
        ),
-       payments ( method, status, reference ),
-       rider_assignments (
-         rider_profile_id, assigned_at, picked_up_at, delivered_at
-       )`
+        payments ( method, status, reference ),
+        rider_assignments (
+          rider_profile_id, assigned_at, picked_up_at, delivered_at, arrived_at,
+          customer_ring_at
+        )`
     )
     .eq("id", id)
     .eq("service_mode", "delivery")
@@ -376,6 +379,8 @@ export default async function RiderDeliveryPage({
             orderId={order.id}
             status={order.status}
             pickedUpAt={assignment.picked_up_at}
+            arrivedAt={assignment.arrived_at}
+            customerRingAt={assignment.customer_ring_at}
             paymentMethod={payment?.method ?? null}
             paymentStatus={payment?.status ?? null}
           />

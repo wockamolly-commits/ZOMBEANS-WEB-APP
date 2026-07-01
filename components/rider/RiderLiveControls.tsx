@@ -1,14 +1,17 @@
 "use client";
 
 import {
+  BellPlus,
   BellRing,
   RefreshCw,
+  Smartphone,
   Volume2,
   VolumeX,
   Wifi,
   WifiOff,
 } from "lucide-react";
 import { useRiderAlerts } from "@/components/rider/RiderAlertsProvider";
+import { usePushSubscription } from "@/lib/use-push-subscription";
 
 /**
  * Deliveries-header controls for the global rider-alert system. The live
@@ -18,6 +21,9 @@ import { useRiderAlerts } from "@/components/rider/RiderAlertsProvider";
 export function RiderLiveControls() {
   const { conn, soundOn, audioReady, pendingRefresh, setSound, enableSound, refreshNow } =
     useRiderAlerts();
+  const { status: pushStatus, subscribe: subscribeToPush } = usePushSubscription({
+    role: "rider",
+  });
 
   const needsSoundTap = soundOn && !audioReady;
 
@@ -84,6 +90,25 @@ export function RiderLiveControls() {
           <BellRing className="size-4" aria-hidden />
           Tap to enable alert sound
         </button>
+      )}
+
+      {pushStatus === "default" && (
+        <button
+          type="button"
+          onClick={subscribeToPush}
+          className="zb-reveal mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zb-bone/45 bg-zb-bone/10 px-3 py-2 text-xs font-semibold text-zb-bone transition hover:bg-zb-bone/15"
+        >
+          <BellPlus className="size-4" aria-hidden />
+          Get delivery alerts even when locked
+        </button>
+      )}
+
+      {pushStatus === "ios-install-required" && (
+        <p className="zb-reveal mt-2 flex items-center gap-2 rounded-lg border border-zb-bone/30 bg-zb-bone/5 px-3 py-2 text-xs font-semibold text-zb-cream/70">
+          <Smartphone className="size-4 shrink-0" aria-hidden />
+          Add this dashboard to your Home Screen to get delivery alerts when
+          locked.
+        </p>
       )}
     </>
   );

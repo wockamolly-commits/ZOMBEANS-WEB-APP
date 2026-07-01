@@ -17,6 +17,10 @@ type RpcOrder = {
   status: CustomerOrderStatus;
   service_mode: CustomerServiceMode;
   rejected_reason: string | null;
+  ready_acknowledged_at: string | null;
+  rider_arrived: boolean | null;
+  rider_ring_at: string | null;
+  rider_acknowledged_at: string | null;
 };
 
 type OwnedOrderRow = {
@@ -24,6 +28,7 @@ type OwnedOrderRow = {
   status: CustomerOrderStatus;
   service_mode: CustomerServiceMode;
   rejected_reason: string | null;
+  ready_acknowledged_at: string | null;
 };
 
 function parseCodes(value: unknown) {
@@ -49,6 +54,10 @@ export async function POST(request: Request) {
       status: CustomerOrderStatus;
       serviceMode: CustomerServiceMode | null;
       rejectedReason: string | null;
+      readyAcknowledgedAt: string | null;
+      riderArrived: boolean;
+      riderRingAt: string | null;
+      riderAcknowledgedAt: string | null;
     }
   >();
 
@@ -63,6 +72,10 @@ export async function POST(request: Request) {
       status: order.status,
       serviceMode: order.service_mode,
       rejectedReason: order.rejected_reason,
+      readyAcknowledgedAt: order.ready_acknowledged_at,
+      riderArrived: order.rider_arrived === true,
+      riderRingAt: order.rider_ring_at,
+      riderAcknowledgedAt: order.rider_acknowledged_at,
     });
   }
 
@@ -72,7 +85,9 @@ export async function POST(request: Request) {
   if (user) {
     const { data, error } = await supabase
       .from("orders")
-      .select("short_code, status, service_mode, rejected_reason")
+      .select(
+        "short_code, status, service_mode, rejected_reason, ready_acknowledged_at"
+      )
       .eq("user_id", user.id)
       .gte(
         "placed_at",
@@ -83,11 +98,19 @@ export async function POST(request: Request) {
 
     if (!error) {
       for (const row of ((data as OwnedOrderRow[] | null) ?? [])) {
-        orders.set(normalizeOrderCode(row.short_code), {
-          shortCode: normalizeOrderCode(row.short_code),
+        const code = normalizeOrderCode(row.short_code);
+        orders.set(code, {
+          shortCode: code,
           status: row.status,
           serviceMode: row.service_mode,
           rejectedReason: row.rejected_reason,
+          readyAcknowledgedAt: row.ready_acknowledged_at,
+          // Preserve arrival detected via the code-based RPC lookup above; the
+          // owned-orders query does not surface rider_assignments.
+          riderArrived: orders.get(code)?.riderArrived ?? false,
+          riderRingAt: orders.get(code)?.riderRingAt ?? null,
+          riderAcknowledgedAt:
+            orders.get(code)?.riderAcknowledgedAt ?? null,
         });
       }
     }

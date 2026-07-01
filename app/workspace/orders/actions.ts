@@ -8,6 +8,7 @@ import {
   type OrderRejectionReason,
 } from "@/lib/order-rejection";
 import { broadcastCustomerOrderStatus } from "@/lib/customer-order-broadcasts";
+import { sendPushToUser } from "@/lib/push-notifications";
 import { createAdminSessionClient } from "@/lib/supabase/admin-session";
 
 export type OrderStatus =
@@ -154,6 +155,22 @@ export async function assignRider(
   if (error) {
     console.error("[admin] assignRider failed:", error);
     return { ok: false, error: friendly(error.message) };
+  }
+
+  if (riderProfileId) {
+    const { data: order } = await supabase
+      .from("orders")
+      .select("short_code")
+      .eq("id", orderId)
+      .single();
+    if (order?.short_code) {
+      sendPushToUser(riderProfileId, {
+        title: "New delivery assigned",
+        body: `Order ${order.short_code} is ready for you to pick up.`,
+        url: `/rider/delivery/${orderId}`,
+        tag: `rider-assignment:${orderId}`,
+      });
+    }
   }
 
   revalidatePath("/workspace/orders");
